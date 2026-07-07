@@ -70,6 +70,21 @@ To trigger an automation, use an **Event** trigger in Home Assistant:
 
 This allows you to control anything (e.g. Philips Hue, Sonos, Zigbee devices) directly from your Bticino wall switches!
 
+#### Example Automation (YAML)
+```yaml
+alias: "Trigger Philips Hue with Bticino Button 1"
+trigger:
+  - platform: event
+    event_type: myhome_scenario_event
+    event_data:
+      scenario: 1
+      control_panel: "51" # Optional: Specify the module address if you have multiple
+action:
+  - service: light.toggle
+    target:
+      entity_id: light.living_room_hue
+```
+
 ---
 
 ## Installation
