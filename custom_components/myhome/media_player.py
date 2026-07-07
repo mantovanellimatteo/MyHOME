@@ -41,11 +41,11 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             device_id=_player,
             who=_configured_players[_player][CONF_WHO],
             where=_configured_players[_player][CONF_WHERE],
-            interface=_configured_players[_player][CONF_BUS_INTERFACE] if CONF_BUS_INTERFACE in _configured_players[_player] else None,
-            name=_configured_players[_player][CONF_NAME],
-            entity_name=_configured_players[_player][CONF_ENTITY_NAME],
-            manufacturer=_configured_players[_player][CONF_MANUFACTURER],
-            model=_configured_players[_player][CONF_DEVICE_MODEL],
+            interface=_configured_players[_player].get(CONF_BUS_INTERFACE),
+            name=_configured_players[_player].get(CONF_NAME),
+            entity_name=_configured_players[_player].get(CONF_ENTITY_NAME),
+            manufacturer=_configured_players[_player].get(CONF_MANUFACTURER, "BTicino S.p.A."),
+            model=_configured_players[_player].get(CONF_DEVICE_MODEL, None),
             gateway=hass.data[DOMAIN][config_entry.data[CONF_MAC]][CONF_ENTITY],
         )
         _media_players.append(_media_player)

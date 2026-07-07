@@ -73,21 +73,13 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                 who=_configured_climate_devices[_climate_device][CONF_WHO],
                 where=_configured_climate_devices[_climate_device][CONF_ZONE],
                 name=_configured_climate_devices[_climate_device][CONF_NAME],
-                heating=_configured_climate_devices[_climate_device][
-                    CONF_HEATING_SUPPORT
-                ],
-                cooling=_configured_climate_devices[_climate_device][
-                    CONF_COOLING_SUPPORT
-                ],
-                fan=_configured_climate_devices[_climate_device][CONF_FAN_SUPPORT],
-                standalone=_configured_climate_devices[_climate_device][
-                    CONF_STANDALONE
-                ],
-                central=_configured_climate_devices[_climate_device][CONF_CENTRAL],
-                manufacturer=_configured_climate_devices[_climate_device][
-                    CONF_MANUFACTURER
-                ],
-                model=_configured_climate_devices[_climate_device][CONF_DEVICE_MODEL],
+                heating=_configured_climate_devices[_climate_device].get(CONF_HEATING_SUPPORT, True),
+                cooling=_configured_climate_devices[_climate_device].get(CONF_COOLING_SUPPORT, True),
+                fan=_configured_climate_devices[_climate_device].get(CONF_FAN_SUPPORT, False),
+                standalone=_configured_climate_devices[_climate_device].get(CONF_STANDALONE, False),
+                central=_configured_climate_devices[_climate_device].get(CONF_CENTRAL, False),
+                manufacturer=_configured_climate_devices[_climate_device].get(CONF_MANUFACTURER, "BTicino S.p.A."),
+                model=_configured_climate_devices[_climate_device].get(CONF_DEVICE_MODEL, None),
                 gateway=hass.data[DOMAIN][config_entry.data[CONF_MAC]][CONF_ENTITY],
             )
         )

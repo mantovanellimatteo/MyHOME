@@ -50,9 +50,9 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             interface=_configured_covers[_cover][CONF_BUS_INTERFACE] if CONF_BUS_INTERFACE in _configured_covers[_cover] else None,
             name=_configured_covers[_cover][CONF_NAME],
             entity_name=_configured_covers[_cover][CONF_ENTITY_NAME],
-            advanced=_configured_covers[_cover][CONF_ADVANCED_SHUTTER],
-            manufacturer=_configured_covers[_cover][CONF_MANUFACTURER],
-            model=_configured_covers[_cover][CONF_DEVICE_MODEL],
+            advanced=_configured_covers[_cover].get(CONF_ADVANCED_SHUTTER, False),
+            manufacturer=_configured_covers[_cover].get(CONF_MANUFACTURER, "BTicino S.p.A."),
+            model=_configured_covers[_cover].get(CONF_DEVICE_MODEL, None),
             gateway=hass.data[DOMAIN][config_entry.data[CONF_MAC]][CONF_ENTITY],
         )
         _covers.append(_cover)
@@ -71,7 +71,7 @@ async def async_unload_entry(hass, config_entry):  # pylint: disable=unused-argu
 
 
 class MyHOMECover(MyHOMEEntity, CoverEntity):
-    device_class = CoverDeviceClass.SHUTTER
+    _attr_device_class = CoverDeviceClass.SHUTTER
 
     def __init__(
         self,
