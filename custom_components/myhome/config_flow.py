@@ -388,7 +388,121 @@ class MyhomeOptionsFlowHandler(OptionsFlow):
 
     async def async_step_init(self, user_input=None):  # pylint: disable=unused-argument
         """Manage the MyHome options."""
-        return await self.async_step_user()
+        return await self.async_step_menu()
+
+    async def async_step_menu(self, user_input=None):
+        """Show selection menu for MyHome options."""
+        if user_input is not None:
+            choice = user_input["select_option"]
+            if choice == "settings":
+                return await self.async_step_user()
+            elif choice == "scan":
+                return await self.async_step_scan_active()
+            elif choice == "sniff":
+                return await self.async_step_sniff_passive()
+
+        return self.async_show_form(
+            step_id="menu",
+            data_schema=Schema(
+                {
+                    Required("select_option", default="settings"): In(
+                        {
+                            "settings": "Configure Gateway Settings",
+                            "scan": "Scan Bus for Devices (Active)",
+                            "sniff": "Sniff Bus for Keypresses (Passive)",
+                        }
+                    )
+                }
+            ),
+        )
+
+    async def async_step_scan_active(self, user_input=None):
+        """Perform active scan of the OpenWebNet bus."""
+        if user_input is not None:
+            gateway_handler = self.hass.data[DOMAIN][self.config_entry.data[CONF_MAC]][CONF_ENTITY]
+            gateway = gateway_handler.gateway
+            
+            from .discovery import async_discover_all_devices
+            try:
+                discovered = await async_discover_all_devices(gateway)
+                
+                current_devices = self.options.get("devices", {})
+                new_device_count = 0
+                for platform, devices in discovered.items():
+                    if platform not in current_devices:
+                        current_devices[platform] = {}
+                    for dev_id, dev_conf in devices.items():
+                        if dev_id not in current_devices[platform]:
+                            current_devices[platform][dev_id] = dev_conf
+                            new_device_count += 1
+                            
+                self.options["devices"] = current_devices
+                
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry,
+                    options=self.options
+                )
+                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+                
+                return self.async_abort(
+                    reason="scan_completed",
+                    description_placeholders={"count": str(new_device_count)}
+                )
+            except Exception as err:
+                LOGGER.exception("Active scan failed: %s", err)
+                return self.async_abort(reason="scan_failed")
+                
+        return self.async_show_form(
+            step_id="scan_active"
+        )
+
+    async def async_step_sniff_passive(self, user_input=None):
+        """Perform passive sniffing of the OpenWebNet bus."""
+        errors = {}
+        if user_input is not None:
+            duration = int(user_input["duration"])
+            gateway_handler = self.hass.data[DOMAIN][self.config_entry.data[CONF_MAC]][CONF_ENTITY]
+            gateway = gateway_handler.gateway
+            
+            from .discovery import async_sniff_bus
+            try:
+                discovered = await async_sniff_bus(gateway, duration)
+                
+                current_devices = self.options.get("devices", {})
+                new_device_count = 0
+                for platform, devices in discovered.items():
+                    if platform not in current_devices:
+                        current_devices[platform] = {}
+                    for dev_id, dev_conf in devices.items():
+                        if dev_id not in current_devices[platform]:
+                            current_devices[platform][dev_id] = dev_conf
+                            new_device_count += 1
+                            
+                self.options["devices"] = current_devices
+                
+                self.hass.config_entries.async_update_entry(
+                    self.config_entry,
+                    options=self.options
+                )
+                await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+                
+                return self.async_abort(
+                    reason="sniff_completed",
+                    description_placeholders={"count": str(new_device_count)}
+                )
+            except Exception as err:
+                LOGGER.exception("Passive sniffing failed: %s", err)
+                return self.async_abort(reason="sniff_failed")
+                
+        return self.async_show_form(
+            step_id="sniff_passive",
+            data_schema=Schema(
+                {
+                    Required("duration", default=60): All(Coerce(int), Range(min=10, max=300)),
+                }
+            ),
+            errors=errors,
+        )
 
     async def async_step_user(self, user_input=None, errors={}):  # pylint: disable=dangerous-default-value
         """Manage the MyHome devices options."""

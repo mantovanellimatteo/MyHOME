@@ -55,6 +55,24 @@
   },
   "options": {
     "step": {
+      "menu": {
+        "title": "Seleziona Azione",
+        "description": "Scegli cosa desideri fare con l'integrazione MyHome.",
+        "data": {
+          "select_option": "Azione"
+        }
+      },
+      "scan_active": {
+        "title": "Scansione Attiva del Bus",
+        "description": "Questo eseguirà una scansione di tutti gli indirizzi standard sul bus SCS per luci, tapparelle e zone di riscaldamento. Richiede circa 10-15 secondi. Vuoi avviare?"
+      },
+      "sniff_passive": {
+        "title": "Sniffing Passivo del Bus",
+        "description": "Questo rimarrà in ascolto degli eventi sul bus. Gira per casa e premi gli interruttori/pulsanti a parete per farli rilevare. Scegli la durata dell'ascolto qui sotto.",
+        "data": {
+          "duration": "Durata (secondi)"
+        }
+      },
       "user": {
         "title": "Opzioni MyHome",
         "description": "Impostazioni di sistema avanzate",
@@ -73,6 +91,12 @@
       "invalid_config_path": "Il file di configurazione non esiste in questo percorso",
       "invalid_password": "Password non valida",
       "password_error": "Errore password"
+    },
+    "abort": {
+      "scan_completed": "Scansione attiva completata! Trovati {count} nuovi dispositivi.",
+      "scan_failed": "Scansione attiva fallita. Controlla i log per maggiori dettagli.",
+      "sniff_completed": "Sniffing passivo completato! Trovati {count} nuovi dispositivi.",
+      "sniff_failed": "Sniffing passivo fallito. Controlla i log per maggiori dettagli."
     }
   },
   "services": {

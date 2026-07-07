@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .gateway import MyHOMEGatewayHandler
 
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity
 from homeassistant.const import CONF_ENTITIES
 
@@ -40,13 +41,13 @@ class MyHOMEEntity(Entity):
         self._attr_entity_registry_enabled_default = True
         self._attr_should_poll = False
 
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, f"{gateway.mac}-{self._device_id}")},
-            "name": name,
-            "manufacturer": self._manufacturer,
-            "model": self._model,
-            "via_device": (DOMAIN, self._gateway_handler.unique_id),
-        }
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{gateway.mac}-{self._device_id}")},
+            name=name,
+            manufacturer=self._manufacturer,
+            model=self._model,
+            via_device=(DOMAIN, self._gateway_handler.unique_id),
+        )
 
     async def async_added_to_hass(self):
         """When entity is added to hass."""
