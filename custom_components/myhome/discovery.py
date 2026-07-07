@@ -31,27 +31,24 @@ async def async_scan_bus(gateway, who: str, addresses: List[str]) -> List[str]:
                 resp = raw_response.decode()
                 
                 is_nack = "*#*0##" in resp
-                is_ack = "*#*1##" in resp
                 has_state = f"*{who}*" in resp
                 
-                # Consume extra frames until we get ACK or NACK
-                while not (is_ack or is_nack):
+                # Consume extra frames until we get STATE or NACK
+                while not (has_state or is_nack):
                     try:
                         raw_response = await asyncio.wait_for(
                             session._stream_reader.readuntil(OWNSession.SEPARATOR),
-                            timeout=0.05
+                            timeout=0.1
                         )
                         resp = raw_response.decode()
                         if "*#*0##" in resp:
                             is_nack = True
-                        if "*#*1##" in resp:
-                            is_ack = True
                         if f"*{who}*" in resp:
                             has_state = True
                     except asyncio.TimeoutError:
                         break
                 
-                if not is_nack and (is_ack or has_state):
+                if has_state:
                     discovered.append(addr)
                     LOGGER.debug("Discovered device at WHO %s, WHERE %s", who, addr)
             except asyncio.TimeoutError:
