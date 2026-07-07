@@ -39,6 +39,7 @@ from OWNd.discovery import find_gateways
 from .const import (
     CONF_ADDRESS,
     CONF_DEVICE_TYPE,
+    CONF_ENTITY,
     CONF_FIRMWARE,
     CONF_MANUFACTURER,
     CONF_MANUFACTURER_URL,
