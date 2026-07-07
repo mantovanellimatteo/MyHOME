@@ -100,6 +100,15 @@
       "sniff_failed": "Sniffing passivo fallito. Controlla i log per maggiori dettagli."
     }
   },
+  "selector": {
+    "menu_options": {
+      "options": {
+        "settings": "Configura impostazioni gateway",
+        "scan": "Scansione attiva del bus",
+        "sniff": "Sniffing passivo del bus"
+      }
+    }
+  },
   "services": {
     "sync_time": {
       "name": "Syncronize time",

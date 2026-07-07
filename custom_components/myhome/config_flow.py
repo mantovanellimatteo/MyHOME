@@ -32,6 +32,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import callback
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig
 from OWNd.connection import OWNGateway, OWNSession
 from OWNd.discovery import find_gateways
 
@@ -407,12 +408,11 @@ class MyhomeOptionsFlowHandler(OptionsFlow):
             step_id="menu",
             data_schema=Schema(
                 {
-                    Required("select_option", default="settings"): In(
-                        {
-                            "settings": "Configure Gateway Settings",
-                            "scan": "Scan Bus for Devices (Active)",
-                            "sniff": "Sniff Bus for Keypresses (Passive)",
-                        }
+                    Required("select_option", default="settings"): SelectSelector(
+                        SelectSelectorConfig(
+                            options=["settings", "scan", "sniff"],
+                            translation_key="menu_options",
+                        )
                     )
                 }
             ),

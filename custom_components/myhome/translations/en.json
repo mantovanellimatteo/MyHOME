@@ -100,6 +100,15 @@
       "sniff_failed": "Passive sniffing failed. Check logs for details."
     }
   },
+  "selector": {
+    "menu_options": {
+      "options": {
+        "settings": "Configure Gateway Settings",
+        "scan": "Scan Bus for Devices (Active)",
+        "sniff": "Sniff Bus for Keypresses (Passive)"
+      }
+    }
+  },
   "services": {
     "sync_time": {
       "name": "Syncronize time",
