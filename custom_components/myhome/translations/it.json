@@ -81,7 +81,8 @@
           "password": "Password",
           "config_file_path": "Percorso del file di configurazione",
           "command_worker_count": "Numero di sessioni di comando simultanee",
-          "generate_events": "Genera eventi in Home Assistant per ogni messaggio ricevuto"
+          "generate_events": "Genera eventi in Home Assistant per ogni messaggio ricevuto",
+          "enable_auto_learning": "Abilita auto-apprendimento in background (rileva nuovi dispositivi quando vengono usati)"
         }
       }
     },

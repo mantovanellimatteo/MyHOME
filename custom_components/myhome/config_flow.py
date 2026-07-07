@@ -385,6 +385,8 @@ class MyhomeOptionsFlowHandler(OptionsFlow):
             self.options[CONF_FILE_PATH] = "/config/myhome.yaml"
         if CONF_GENERATE_EVENTS not in self.options:
             self.options[CONF_GENERATE_EVENTS] = False
+        if "enable_auto_learning" not in self.options:
+            self.options["enable_auto_learning"] = False
 
     async def async_step_init(self, user_input=None):  # pylint: disable=unused-argument
         """Manage the MyHome options."""
@@ -516,6 +518,7 @@ class MyhomeOptionsFlowHandler(OptionsFlow):
             self.options.update({CONF_WORKER_COUNT: user_input[CONF_WORKER_COUNT]})
             self.options.update({CONF_FILE_PATH: user_input[CONF_FILE_PATH]})
             self.options.update({CONF_GENERATE_EVENTS: user_input[CONF_GENERATE_EVENTS]})
+            self.options.update({"enable_auto_learning": user_input["enable_auto_learning"]})
 
             _data_update = not (self.data[CONF_HOST] == user_input[CONF_ADDRESS] and self.data[CONF_OWN_PASSWORD] == user_input[CONF_OWN_PASSWORD])
             self.data.update({CONF_HOST: user_input[CONF_ADDRESS]})
@@ -556,6 +559,10 @@ class MyhomeOptionsFlowHandler(OptionsFlow):
                     Required(
                         CONF_GENERATE_EVENTS,
                         description={"suggested_value": self.options[CONF_GENERATE_EVENTS]},
+                    ): bool,
+                    Required(
+                        "enable_auto_learning",
+                        description={"suggested_value": self.options["enable_auto_learning"]},
                     ): bool,
                 }
             ),

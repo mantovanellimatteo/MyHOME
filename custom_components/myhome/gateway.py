@@ -168,7 +168,60 @@ class MyHOMEGatewayHandler:
                             self.log_id,
                             message,
                         )
-                    elif isinstance(message, OWNEnergyEvent):
+                        continue
+
+                    # Auto-learning logic
+                    if self.config_entry.options.get("enable_auto_learning", False):
+                        who = str(message.who)
+                        where = str(message.where)
+                        platform = None
+                        dev_conf = {"who": who, "where": where}
+                        if who == "1":
+                            platform = "light"
+                            dev_conf["dimmable"] = hasattr(message, "brightness") and message.brightness is not None
+                            dev_conf["name"] = f"Light {where}"
+                        elif who == "2":
+                            platform = "cover"
+                            dev_conf["name"] = f"Cover {where}"
+                        elif who == "4":
+                            platform = "climate"
+                            dev_conf["name"] = f"Zone {where}"
+                            dev_conf["zone"] = where
+                        elif who == "16":
+                            platform = "media_player"
+                            dev_conf["name"] = f"Sound Zone {where}"
+                        elif who == "22":
+                            platform = "media_player"
+                            dev_conf["name"] = f"Sound Zone {where}"
+                        if platform:
+                            dev_id = f"{who}-{where}"
+                            if (
+                                platform not in self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS]
+                                or dev_id not in self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS][platform]
+                            ):
+                                LOGGER.info("Auto-learning discovered new device: %s (%s)", dev_id, platform)
+                                new_options = dict(self.config_entry.options)
+                                devices = new_options.get("devices", {})
+                                if platform not in devices:
+                                    devices[platform] = {}
+                                if dev_id not in devices[platform]:
+                                    devices[platform][dev_id] = dev_conf
+                                    new_options["devices"] = devices
+                                    self.hass.config_entries.async_update_entry(
+                                        self.config_entry,
+                                        options=new_options
+                                    )
+                                    self.hass.components.persistent_notification.async_create(
+                                        self.hass,
+                                        title="MyHOME Auto-learning",
+                                        message=f"Discovered and registered new `{platform}` device: **{dev_conf['name']}** (address {where})",
+                                        notification_id=f"myhome_learned_{dev_id}"
+                                    )
+                                    self.hass.async_create_task(
+                                        self.hass.config_entries.async_reload(self.config_entry.entry_id)
+                                    )
+
+                    if isinstance(message, OWNEnergyEvent):
                         if SENSOR in self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS] and message.entity in self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS][SENSOR]:
                             for _entity in self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS][SENSOR][message.entity][CONF_ENTITIES]:
                                 if isinstance(
@@ -184,6 +237,7 @@ class MyHOMEGatewayHandler:
                         or isinstance(message, OWNDryContactEvent)
                         or isinstance(message, OWNAuxEvent)
                         or isinstance(message, OWNHeatingEvent)
+                        or message.who in ["16", "22"]
                     ):
                         if not message.is_translation:
                             is_event = False

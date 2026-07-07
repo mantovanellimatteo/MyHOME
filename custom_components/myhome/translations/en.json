@@ -81,7 +81,8 @@
           "password": "Password",
           "config_file_path": "Configuration file path",
           "command_worker_count": "Number of concurrent command sessions",
-          "generate_events": "Generate events in Home Assistant for each message received"
+          "generate_events": "Generate events in Home Assistant for each message received",
+          "enable_auto_learning": "Enable background auto-learning (discover new devices as they are used)"
         }
       }
     },
