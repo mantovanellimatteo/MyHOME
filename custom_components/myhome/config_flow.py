@@ -80,7 +80,7 @@ class MyhomeFlowHandler(ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(config_entry):
         """Get the options flow for this handler."""
-        return MyhomeOptionsFlowHandler(config_entry)
+        return MyhomeOptionsFlowHandler()
 
     def __init__(self):
         """Initialize the MyHome flow."""
@@ -375,11 +375,15 @@ class MyhomeFlowHandler(ConfigFlow, domain=DOMAIN):
 class MyhomeOptionsFlowHandler(OptionsFlow):
     """Handle MyHome options."""
 
-    def __init__(self, config_entry):
+    def __init__(self):
         """Initialize MyHome options flow."""
-        super().__init__(config_entry)
-        self.options = dict(config_entry.options)
-        self.data = dict(config_entry.data)
+        self.options = {}
+        self.data = {}
+
+    async def async_step_init(self, user_input=None):  # pylint: disable=unused-argument
+        """Manage the MyHome options."""
+        self.options = dict(self.config_entry.options)
+        self.data = dict(self.config_entry.data)
         if CONF_WORKER_COUNT not in self.options:
             self.options[CONF_WORKER_COUNT] = 1
         if CONF_FILE_PATH not in self.options:
@@ -388,9 +392,7 @@ class MyhomeOptionsFlowHandler(OptionsFlow):
             self.options[CONF_GENERATE_EVENTS] = False
         if "enable_auto_learning" not in self.options:
             self.options["enable_auto_learning"] = False
-
-    async def async_step_init(self, user_input=None):  # pylint: disable=unused-argument
-        """Manage the MyHome options."""
+            
         return await self.async_step_menu()
 
     async def async_step_menu(self, user_input=None):
