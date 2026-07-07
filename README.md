@@ -1,7 +1,24 @@
 # MyHOME (Modernized Fork)
 **Version: alpha 0.1**
 
-A modernized and maintained custom integration for Bticino/Legrand MyHOME SCS bus systems in Home Assistant.
+## 📖 Introduction
+
+### What is it? (Cos'è?)
+This is a custom Home Assistant integration that acts as a local bridge to Bticino / Legrand MyHome wired home automation (domotic) systems.
+
+### What does it do? (Cosa fa?)
+It communicates directly over the local network with your Bticino IP gateway (such as the F454, F453, F452, MH200, MH200N, MH201, MH202, or MyHomeServer1) using the OpenWebNet protocol. It enables Home Assistant to:
+- **Control** lights, dimmers, switches, and motorized covers/shutters.
+- **Monitor** temperature sensors, energy/power meters, and binary sensors.
+- **Listen** to bus events (such as physical scenario button keypresses) to trigger complex automation routines.
+
+### What is it for? (A cosa serve?)
+If you have a wired Bticino MyHome SCS system, this integration brings all your physical devices into Home Assistant for unified control, dashboard visualization, and automation.
+- **100% Local & Offline**: It operates entirely within your local network (LAN) with zero cloud dependencies. Your smart home remains fully functional even without an internet connection, keeping it private, secure, and extremely fast.
+- **Legacy Hardware Support**: Gives a new lease of life to older Bticino gateways (like the F454) by integrating them with modern smart home tech.
+- **Alternative to Cloud Migration**: For gateways like the MyHomeServer1, using this local integration keeps everything local instead of forcing you to migrate your system to the Netatmo cloud-based "Home + Control" API.
+
+---
 
 This is a fork of the original `anotherjulien/MyHOME` integration, updated with modern Home Assistant APIs, robust connection recovery, and auto-discovery capabilities.
 
