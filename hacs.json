@@ -1,7 +1,6 @@
 {
   "name": "MyHome",
-  "zip_release": true,
-  "filename": "myhome.zip",
+  "zip_release": false,
   "country": [
     "GB",
     "FR",
