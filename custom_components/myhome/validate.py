@@ -29,6 +29,7 @@ from homeassistant.components.sensor import (
     DOMAIN as SENSOR,
 )
 from homeassistant.components.climate import DOMAIN as CLIMATE
+from homeassistant.components.media_player import DOMAIN as MEDIA_PLAYER
 from homeassistant.const import CONF_NAME, CONF_MAC
 
 from .const import (
@@ -421,6 +422,14 @@ climate_schema = MyHomeDeviceSchema(
     }
 )
 
+media_player_schema = MyHomeDeviceSchema(
+    {
+        Required(CONF_WHERE): str,
+        Required(CONF_WHO): str,
+        Optional(CONF_NAME): str,
+    }
+)
+
 gateway_schema = Schema(
     {
         Required(CONF_MAC): MacAddress(),
@@ -430,6 +439,7 @@ gateway_schema = Schema(
         Optional(BINARY_SENSOR): binary_sensor_schema,
         Optional(SENSOR): sensor_schema,
         Optional(CLIMATE): climate_schema,
+        Optional(MEDIA_PLAYER): media_player_schema,
     }
 )
 

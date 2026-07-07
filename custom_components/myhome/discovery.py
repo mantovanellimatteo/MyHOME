@@ -102,6 +102,9 @@ async def async_sniff_bus(gateway, duration_seconds: int) -> Dict[str, Dict[str,
                         platform = "climate"
                         dev_conf["name"] = f"Zone {where}"
                         dev_conf["zone"] = where
+                    elif who == "22":
+                        platform = "media_player"
+                        dev_conf["name"] = f"Sound Zone {where}"
                     
                     if platform:
                         dev_id = f"{who}-{where}"
@@ -171,6 +174,19 @@ async def async_discover_all_devices(gateway) -> Dict[str, Dict[str, dict]]:
                 "who": "4",
                 "zone": addr,
                 "name": f"Zone {addr}"
+            }
+            
+    # Sound Diffusion (WHO = 22)
+    LOGGER.info("Starting active bus scan for Sound Diffusion zones...")
+    audio_zones = await async_scan_bus(gateway, "22", ptp_addresses)
+    if audio_zones:
+        discovered["media_player"] = {}
+        for addr in audio_zones:
+            dev_id = f"22-{addr}"
+            discovered["media_player"][dev_id] = {
+                "who": "22",
+                "where": addr,
+                "name": f"Sound Zone {addr}"
             }
             
     return discovered

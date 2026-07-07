@@ -8,7 +8,7 @@ This is a custom Home Assistant integration that acts as a local bridge to Btici
 
 ### What does it do? (Cosa fa?)
 It communicates directly over the local network with your Bticino IP gateway (such as the F454, F453, F452, MH200, MH200N, MH201, MH202, or MyHomeServer1) using the OpenWebNet protocol. It enables Home Assistant to:
-- **Control** lights, dimmers, switches, and motorized covers/shutters.
+- **Control** lights, dimmers, switches, motorized covers/shutters, and sound diffusion (WHO 22) zones/media players.
 - **Monitor** temperature sensors, energy/power meters, and binary sensors.
 - **Listen** to bus events (such as physical scenario button keypresses) to trigger complex automation routines.
 
@@ -25,6 +25,9 @@ This is a fork of the original `anotherjulien/MyHOME` integration, updated with 
 ---
 
 ## Key Features
+
+### 🎵 Sound Diffusion (WHO 22) Support
+Includes active and passive discovery of sound diffusion zones on your SCS bus, automatically registering them as `media_player` entities in Home Assistant. This allows you to turn fonic points, audio sources, and speaker zones ON and OFF directly from your dashboards and automations.
 
 ### 🔌 Robust Connection Recovery
 The connection listener and command sessions are now wrapped in resilient supervisors with **exponential backoff reconnection**. If the gateway drops the connection due to network issues or session limits, the integration automatically reconnects without requiring a Home Assistant reboot or manual integration reload.
