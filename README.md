@@ -1,7 +1,8 @@
 # MyHOME (Modernized Fork)
-**Version: v0.1.0-alpha.6**
+**Version: v0.1.0**
 
 ## 🆕 Changelog
+* **v0.1.0**: Official Stable Release! Fixed HACS version tracking.
 * **v0.1.0-alpha.6**: Fixed `Unknown error occurred` during Sniffing and Scanning by correctly importing missing `CONF_ENTITY`.
 * **v0.1.0-alpha.5**: Fixed OptionsFlow `500 Internal Server Error` in HA 2024.12+ (removed config_entry initialization parameter).
 * **v0.1.0-alpha.4**: Added full native support for **WHO 16 / WHO 22** Audio Systems (Sources, Amplifiers, Matrices) and a persistent background **Auto-learning (sniffing) mode**.
