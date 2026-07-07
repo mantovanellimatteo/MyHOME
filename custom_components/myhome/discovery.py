@@ -102,6 +102,9 @@ async def async_sniff_bus(gateway, duration_seconds: int) -> Dict[str, Dict[str,
                         platform = "climate"
                         dev_conf["name"] = f"Zone {where}"
                         dev_conf["zone"] = where
+                    elif who == "16":
+                        platform = "media_player"
+                        dev_conf["name"] = f"Sound Zone {where}"
                     elif who == "22":
                         platform = "media_player"
                         dev_conf["name"] = f"Sound Zone {where}"
@@ -176,12 +179,32 @@ async def async_discover_all_devices(gateway) -> Dict[str, Dict[str, dict]]:
                 "name": f"Zone {addr}"
             }
             
-    # Sound Diffusion (WHO = 22)
-    LOGGER.info("Starting active bus scan for Sound Diffusion zones...")
-    audio_zones = await async_scan_bus(gateway, "22", ptp_addresses)
+    # Sound Diffusion (WHO = 16)
+    LOGGER.info("Starting active bus scan for Sound Diffusion zones (WHO 16)...")
+    # WHO 16 addresses: single digit 1-9, two-digit 11-99, and stereo amplifier zones 110-149
+    audio_addresses = [str(a) for a in range(1, 10)] + ptp_addresses
+    for zone in range(11, 15):
+        for sub in range(0, 10):
+            audio_addresses.append(f"{zone}{sub}")
+            
+    audio_zones = await async_scan_bus(gateway, "16", audio_addresses)
     if audio_zones:
         discovered["media_player"] = {}
         for addr in audio_zones:
+            dev_id = f"16-{addr}"
+            discovered["media_player"][dev_id] = {
+                "who": "16",
+                "where": addr,
+                "name": f"Sound Zone {addr}"
+            }
+
+    # Sound Diffusion (WHO = 22)
+    LOGGER.info("Starting active bus scan for Sound Diffusion zones (WHO 22)...")
+    audio_zones_22 = await async_scan_bus(gateway, "22", ptp_addresses)
+    if audio_zones_22:
+        if "media_player" not in discovered:
+            discovered["media_player"] = {}
+        for addr in audio_zones_22:
             dev_id = f"22-{addr}"
             discovered["media_player"][dev_id] = {
                 "who": "22",
