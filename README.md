@@ -1,7 +1,8 @@
 # MyHOME (Modernized Fork)
-**Version: v0.1.1**
+**Version: v0.2.0**
 
 ## 🌟 Changelog
+* **v0.2.0**: **New Feature!** Added native support for Bticino Scenario controls (WHO 0). Pressing physical scenario buttons now natively fires the `myhome_scenario_event` in Home Assistant, allowing you to use your scenario wall-plates as remote controls for ANY entity in Home Assistant (Philips Hue, Sonos, generic automations, etc.) without needing to physically reconfigure them as CEN/CEN+ modules!
 * **v0.1.1**: **Stable Release Update!** Fixed OptionsFlow `500 Internal Server Error` in HA 2024.12+, fixed `Unknown error` during auto-learning, fixed Cover `lock/unlock` icon mapping issue by assigning `_attr_device_class` properly, and fixed a critical initialization `KeyError` crash for ALL auto-learned devices (Covers, Switches, Lights, Climates, MediaPlayers).
 * **v0.1.0**: Official Stable Release! Fixed HACS version tracking.
 
@@ -56,6 +57,18 @@ If you don't know your addresses, you can sniff them passively:
 Easily move between UI and YAML configurations using built-in services:
 - `myhome.scan_bus`: Scans the bus and exports discovered devices to `myhome_discovered.yaml`.
 - `myhome.export_to_yaml`: Exports all your UI-configured devices to `myhome_exported.yaml` for backup or manual editing.
+
+### 🎛️ Scenario Control Integration (New in v0.2.0)
+You can now use your physical Bticino Scenario Modules (such as the 4-button wall plates) to trigger automations directly in Home Assistant without physically reconfiguring them as CEN/CEN+ modules!
+Whenever you press a scenario button, the integration fires a native `myhome_scenario_event` on the Home Assistant bus.
+
+To trigger an automation, use an **Event** trigger in Home Assistant:
+- **Event type:** `myhome_scenario_event`
+- **Event data:**
+  - `scenario`: the number of the scenario button pressed (e.g., 1, 2, 3...)
+  - `control_panel`: the address of the scenario module (`where`)
+
+This allows you to control anything (e.g. Philips Hue, Sonos, Zigbee devices) directly from your Bticino wall switches!
 
 ---
 

@@ -43,6 +43,7 @@ from OWNd.message import (
     OWNCENEvent,
     OWNGatewayEvent,
     OWNGatewayCommand,
+    OWNScenarioEvent,
     OWNCommand,
 )
 
@@ -402,6 +403,19 @@ class MyHOMEGatewayHandler:
                                 "object": int(message.object),
                                 "pushbutton": int(message.push_button),
                                 "event": event,
+                            },
+                        )
+                        LOGGER.info(
+                            "%s %s",
+                            self.log_id,
+                            message.human_readable_log,
+                        )
+                    elif isinstance(message, OWNScenarioEvent):
+                        self.hass.bus.async_fire(
+                            "myhome_scenario_event",
+                            {
+                                "scenario": int(message.scenario),
+                                "control_panel": message.control_panel,
                             },
                         )
                         LOGGER.info(
