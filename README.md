@@ -1,4 +1,5 @@
 # MyHOME (Modernized Fork)
+**Version: alpha 0.1**
 
 A modernized and maintained custom integration for Bticino/Legrand MyHOME SCS bus systems in Home Assistant.
 
