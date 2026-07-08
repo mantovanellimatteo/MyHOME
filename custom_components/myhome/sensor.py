@@ -26,6 +26,7 @@ from homeassistant.const import (
 )
 from homeassistant.helpers import entity_platform
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.event import async_track_time_interval
 from OWNd.message import (
     MESSAGE_TYPE_ACTIVE_POWER,
     MESSAGE_TYPE_CURRENT_DAY_CONSUMPTION,
@@ -251,10 +252,29 @@ class MyHOMEPowerSensor(MyHOMEEntity, SensorEntity):
         self._hass.data[DOMAIN][self._gateway_handler.mac][CONF_PLATFORMS][
             self._platform
         ][self._device_id][CONF_ENTITIES][self._attr_device_class] = self
+        
+        # Start sending instant power immediately
+        await self.start_sending_instant_power(255)
+        
+        # Renew the instant power broadcast every 55 minutes
+        self._unsub_power_renewal = async_track_time_interval(
+            self._hass,
+            self._renew_instant_power,
+            timedelta(minutes=55)
+        )
+        
         await self.async_update()
+
+    async def _renew_instant_power(self, now=None):
+        """Renew the continuous broadcast of instant power from the meter."""
+        LOGGER.debug("Renewing instant power broadcast for %s", self.entity_id)
+        await self.start_sending_instant_power(255)
 
     async def async_will_remove_from_hass(self):
         """When entity is removed from hass."""
+        if hasattr(self, "_unsub_power_renewal") and self._unsub_power_renewal:
+            self._unsub_power_renewal()
+            
         if (
             self._attr_device_class
             in self._hass.data[DOMAIN][self._gateway_handler.mac][CONF_PLATFORMS][

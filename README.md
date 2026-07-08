@@ -1,7 +1,8 @@
 # MyHOME (Modernized Fork)
-**Version: v0.2.1**
+**Version: v0.2.2**
 
 ## 🌟 Changelog
+* **v0.2.2**: **Energy Meters Fix!** Instantaneous Power meters (WHO 18) now automatically and silently renew their broadcast stream every 55 minutes. You no longer need to manually create an automation to call the `start_sending_instant_power` service every hour!
 * **v0.2.1**: **Active Scanning Bugfix!** Fixed an issue where the Active Scanning tool would aggressively add non-existent ("ghost") devices to Home Assistant because it interpreted the gateway's syntactic protocol `ACK` as a confirmation of device existence. It now correctly waits for and requires a valid `STATE` frame to confirm a device is actually physically present.
 * **v0.2.0**: **New Feature!** Added native support for Bticino Scenario controls (WHO 0). Pressing physical scenario buttons now natively fires the `myhome_scenario_event` in Home Assistant, allowing you to use your scenario wall-plates as remote controls for ANY entity in Home Assistant (Philips Hue, Sonos, generic automations, etc.) without needing to physically reconfigure them as CEN/CEN+ modules!
 * **v0.1.1**: **Stable Release Update!** Fixed OptionsFlow `500 Internal Server Error` in HA 2024.12+, fixed `Unknown error` during auto-learning, fixed Cover `lock/unlock` icon mapping issue by assigning `_attr_device_class` properly, and fixed a critical initialization `KeyError` crash for ALL auto-learned devices (Covers, Switches, Lights, Climates, MediaPlayers).
