@@ -1,7 +1,8 @@
 # MyHOME (Modernized Fork)
-**Version: v0.2.2**
+**Version: v0.3.0**
 
 ## 🌟 Changelog
+* **v0.3.0**: **Graphic Device Triggers!** Scenario modules (WHO 0) now automatically register themselves as physical Devices in Home Assistant the first time you press a button. This allows you to create automations natively using the visual UI dropdown menus ("Button 1 pressed", "Button 2 pressed", etc.) instead of writing YAML or listening to raw events!
 * **v0.2.2**: **Energy Meters Fix!** Instantaneous Power meters (WHO 18) now automatically and silently renew their broadcast stream every 55 minutes. You no longer need to manually create an automation to call the `start_sending_instant_power` service every hour!
 * **v0.2.1**: **Active Scanning Bugfix!** Fixed an issue where the Active Scanning tool would aggressively add non-existent ("ghost") devices to Home Assistant because it interpreted the gateway's syntactic protocol `ACK` as a confirmation of device existence. It now correctly waits for and requires a valid `STATE` frame to confirm a device is actually physically present.
 * **v0.2.0**: **New Feature!** Added native support for Bticino Scenario controls (WHO 0). Pressing physical scenario buttons now natively fires the `myhome_scenario_event` in Home Assistant, allowing you to use your scenario wall-plates as remote controls for ANY entity in Home Assistant (Philips Hue, Sonos, generic automations, etc.) without needing to physically reconfigure them as CEN/CEN+ modules!

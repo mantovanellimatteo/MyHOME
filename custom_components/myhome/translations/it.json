@@ -148,5 +148,10 @@
         }
       }
     }
+  },
+  "device_automation": {
+    "trigger_type": {
+      "scenario_button_pressed": "Pulsante {scenario} premuto"
+    }
   }
 }

@@ -27,6 +27,7 @@ from homeassistant.components.sensor import (
     DOMAIN as SENSOR,
 )
 from homeassistant.components.climate import DOMAIN as CLIMATE
+from homeassistant.helpers import device_registry as dr
 
 from OWNd.connection import OWNSession, OWNEventSession, OWNCommandSession, OWNGateway
 from OWNd.message import (
@@ -411,6 +412,25 @@ class MyHOMEGatewayHandler:
                             message.human_readable_log,
                         )
                     elif isinstance(message, OWNScenarioEvent):
+                        # Find the config entry for this gateway
+                        config_entry = next(
+                            (
+                                entry for entry in self.hass.config_entries.async_entries(DOMAIN) # type: ignore
+                                if entry.data.get(CONF_MAC) == self.mac
+                            ),
+                            None
+                        )
+                        if config_entry:
+                            device_registry = dr.async_get(self.hass)
+                            device_registry.async_get_or_create(
+                                config_entry_id=config_entry.entry_id,
+                                identifiers={(DOMAIN, f"{self.mac}-scenario-{message.control_panel}")},
+                                name=f"Scenario Control {message.control_panel}",
+                                manufacturer="BTicino",
+                                model="Scenario Module",
+                                via_device=(DOMAIN, self.mac),
+                            )
+
                         self.hass.bus.async_fire(
                             "myhome_scenario_event",
                             {
