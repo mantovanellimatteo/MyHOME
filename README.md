@@ -1,7 +1,8 @@
 # MyHOME (Modernized Fork)
-**Version: v0.3.0**
+**Version: v0.3.1**
 
 ## 🌟 Changelog
+* **v0.3.1**: **Hotfix!** Fixed a critical bug introduced in v0.2.2 where the gateway's MAC address capitalization could cause a `KeyError` during the reception of Instant Power broadcast events, triggering a bootloop/crash of the MyHOME integration.
 * **v0.3.0**: **Graphic Device Triggers!** Scenario modules (WHO 0) now automatically register themselves as physical Devices in Home Assistant the first time you press a button. This allows you to create automations natively using the visual UI dropdown menus ("Button 1 pressed", "Button 2 pressed", etc.) instead of writing YAML or listening to raw events!
 * **v0.2.2**: **Energy Meters Fix!** Instantaneous Power meters (WHO 18) now automatically and silently renew their broadcast stream every 55 minutes. You no longer need to manually create an automation to call the `start_sending_instant_power` service every hour!
 * **v0.2.1**: **Active Scanning Bugfix!** Fixed an issue where the Active Scanning tool would aggressively add non-existent ("ghost") devices to Home Assistant because it interpreted the gateway's syntactic protocol `ACK` as a confirmation of device existence. It now correctly waits for and requires a valid `STATE` frame to confirm a device is actually physically present.

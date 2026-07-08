@@ -103,7 +103,7 @@ class MyHOMEGatewayHandler:
 
     @property
     def mac(self) -> str:
-        return self.gateway.serial
+        return self.config_entry.data[CONF_MAC]
 
     @property
     def unique_id(self) -> str:
