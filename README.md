@@ -1,7 +1,11 @@
 # MyHOME (Modernized Fork)
-**Version: v0.3.2**
+**Version: v0.4.0**
 
 ## 🌟 Changelog
+* **v0.4.0**: **Features Galore!** 
+  - **Smooth Transitions**: Native support for fade-in and fade-out transitions on dimmable lights (using software-based stepped dimming).
+  - **Load Management (Gestione Carichi) Discovery**: Added exploratory support for WHO=3. The integration now intercepts load management events and creates persistent notifications in Home Assistant to aid in mapping specific actuators.
+  - **Bugfix**: Fixed an issue where Scenario Modules (stateless devices without entities) were being incorrectly pruned/deleted on every Home Assistant restart.
 * **v0.3.2**: **Hotfix!** Fixed an issue where Scenario Module graphic device triggers were not showing up in the Automation UI on Home Assistant versions 2024.2+ due to a deprecated base schema import.
 * **v0.3.1**: **Hotfix!** Fixed a critical bug introduced in v0.2.2 where the gateway's MAC address capitalization could cause a `KeyError` during the reception of Instant Power broadcast events, triggering a bootloop/crash of the MyHOME integration.
 * **v0.3.0**: **Graphic Device Triggers!** Scenario modules (WHO 0) now automatically register themselves as physical Devices in Home Assistant the first time you press a button. This allows you to create automations natively using the visual UI dropdown menus ("Button 1 pressed", "Button 2 pressed", etc.) instead of writing YAML or listening to raw events!

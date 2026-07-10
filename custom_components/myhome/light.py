@@ -1,4 +1,5 @@
 """Support for MyHome lights."""
+import asyncio
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ATTR_BRIGHTNESS_PCT,
@@ -148,6 +149,35 @@ class MyHOMELight(MyHOMEEntity, LightEntity):
         self._attr_is_on = None
         self._attr_brightness = None
         self._attr_brightness_pct = None
+        self._transition_task = None
+
+    async def _async_fade_light(self, target_pct: int, transition_seconds: int):
+        """Simulate a smooth transition over the MyHOME bus."""
+        start_pct = self._attr_brightness_pct or (0 if not self._attr_is_on else 100)
+        
+        if start_pct == target_pct:
+            return
+
+        # Limit step frequency to max 2 commands per second to avoid bus congestion
+        steps = max(1, min(int(transition_seconds * 2), abs(target_pct - start_pct)))
+        step_duration = transition_seconds / steps
+        pct_step = (target_pct - start_pct) / steps
+
+        LOGGER.debug(
+            "%s Starting transition for %s to %s%% over %ss (%s steps)", 
+            self._gateway_handler.log_id, self._full_where, target_pct, transition_seconds, steps
+        )
+
+        for i in range(1, steps + 1):
+            await asyncio.sleep(step_duration)
+            current_target = int(start_pct + (pct_step * i))
+            await self._gateway_handler.send(OWNLightingCommand.set_brightness(self._full_where, current_target))
+            self._attr_brightness_pct = current_target
+            self._attr_brightness = percent_to_eight_bits(current_target)
+            self._attr_is_on = current_target > 0
+            self.async_schedule_update_ha_state()
+
+        self._transition_task = None
 
     async def async_update(self):
         """Update the entity.
@@ -161,6 +191,9 @@ class MyHOMELight(MyHOMEEntity, LightEntity):
 
     async def async_turn_on(self, **kwargs):
         """Turn the device on."""
+        if self._transition_task:
+            self._transition_task.cancel()
+            self._transition_task = None
 
         if ATTR_FLASH in kwargs and self._attr_supported_features & LightEntityFeature.FLASH:
             if kwargs[ATTR_FLASH] == FLASH_SHORT:
@@ -178,19 +211,21 @@ class MyHOMELight(MyHOMEEntity, LightEntity):
                 if _percent_brightness == 0:
                     return await self.async_turn_off(**kwargs)
                 else:
-                    return (
-                        await self._gateway_handler.send(
-                            OWNLightingCommand.set_brightness(
-                                self._full_where,
-                                _percent_brightness,
-                                int(kwargs[ATTR_TRANSITION]),
-                            )
+                    if ATTR_TRANSITION in kwargs:
+                        self._transition_task = self.hass.async_create_task(
+                            self._async_fade_light(_percent_brightness, int(kwargs[ATTR_TRANSITION]))
                         )
-                        if ATTR_TRANSITION in kwargs
-                        else await self._gateway_handler.send(OWNLightingCommand.set_brightness(self._full_where, _percent_brightness))
-                    )
+                        return
+                    else:
+                        return await self._gateway_handler.send(OWNLightingCommand.set_brightness(self._full_where, _percent_brightness))
             else:
-                return await self._gateway_handler.send(OWNLightingCommand.switch_on(self._full_where, int(kwargs[ATTR_TRANSITION])))
+                if ATTR_TRANSITION in kwargs:
+                    self._transition_task = self.hass.async_create_task(
+                        self._async_fade_light(100, int(kwargs[ATTR_TRANSITION]))
+                    )
+                    return
+                else:
+                    return await self._gateway_handler.send(OWNLightingCommand.switch_on(self._full_where))
         else:
             await self._gateway_handler.send(OWNLightingCommand.switch_on(self._full_where))
             if ColorMode.BRIGHTNESS in self._attr_supported_color_modes:
@@ -198,9 +233,15 @@ class MyHOMELight(MyHOMEEntity, LightEntity):
 
     async def async_turn_off(self, **kwargs):
         """Turn the device off."""
+        if self._transition_task:
+            self._transition_task.cancel()
+            self._transition_task = None
 
         if ATTR_TRANSITION in kwargs and self._attr_supported_features & LightEntityFeature.TRANSITION:
-            return await self._gateway_handler.send(OWNLightingCommand.switch_off(self._full_where, int(kwargs[ATTR_TRANSITION])))
+            self._transition_task = self.hass.async_create_task(
+                self._async_fade_light(0, int(kwargs[ATTR_TRANSITION]))
+            )
+            return
 
         if ATTR_FLASH in kwargs and self._attr_supported_features & LightEntityFeature.FLASH:
             if kwargs[ATTR_FLASH] == FLASH_SHORT:

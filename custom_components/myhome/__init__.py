@@ -215,6 +215,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         devices_to_be_removed.remove(gateway_device_entry.id)
 
     for device_id in devices_to_be_removed:
+        device_entry = device_registry.async_get(device_id)
+        if device_entry and device_entry.model == "Scenario Module":
+            continue
+            
         if (
             len(
                 er.async_entries_for_device(

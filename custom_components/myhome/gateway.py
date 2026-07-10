@@ -165,11 +165,20 @@ class MyHOMEGatewayHandler:
                             self.hass.bus.async_fire("myhome_message_event", {"gateway": str(self.gateway.host), "message": str(message)})
 
                     if not isinstance(message, OWNMessage):
-                        LOGGER.warning(
-                            "%s Data received is not a message: `%s`",
-                            self.log_id,
-                            message,
-                        )
+                        if isinstance(message, str) and (message.startswith("*3*") or message.startswith("*#3*")):
+                            LOGGER.info("Intercepted Load Management (WHO 3) raw message: %s", message)
+                            self.hass.components.persistent_notification.async_create(
+                                self.hass,
+                                title="MyHOME Controllo Carichi",
+                                message=f"Nuovo messaggio di gestione carichi intercettato: `{message}`\nInvia questo log allo sviluppatore per integrarlo!",
+                                notification_id=f"myhome_load_management_{message}",
+                            )
+                        else:
+                            LOGGER.warning(
+                                "%s Data received is not a message: `%s`",
+                                self.log_id,
+                                message,
+                            )
                         continue
 
                     # Auto-learning logic
