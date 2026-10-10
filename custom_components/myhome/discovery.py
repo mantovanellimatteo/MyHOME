@@ -3,8 +3,8 @@ import asyncio
 import logging
 from typing import List, Dict
 
-from OWNd.connection import OWNSession, OWNCommandSession, OWNEventSession
-from OWNd.message import OWNMessage, OWNSignaling
+from .ownd.connection import OWNSession, OWNCommandSession, OWNEventSession
+from .ownd.message import OWNMessage, OWNSignaling
 
 from .const import LOGGER
 
@@ -44,7 +44,7 @@ async def async_scan_bus(gateway, who: str, addresses: List[str]) -> List[str]:
                 await session._stream_writer.drain()
 
             has_state = False
-            deadline = asyncio.get_event_loop().time() + 0.20
+            deadline = asyncio.get_event_loop().time() + 0.40
             try:
                 while asyncio.get_event_loop().time() < deadline:
                     remaining = max(0.01, deadline - asyncio.get_event_loop().time())
@@ -158,8 +158,124 @@ async def async_sniff_bus(gateway, duration_seconds: int) -> Dict[str, Dict[str,
         
     return discovered
 
+async def async_scan_sound_who22(gateway, quick: bool = False) -> Dict[str, dict]:
+    """Scan bus specifically for WHO 22 Sound Diffusion devices: amplifier zones (3#A#P) and Tuner sources (2#S)."""
+    session = OWNCommandSession(gateway=gateway, logger=LOGGER)
+    connect_res = await session.connect()
+    if not connect_res or not connect_res.get("Success"):
+        LOGGER.warning("Could not connect command session for Sound WHO 22 discovery: %s", connect_res.get("Message"))
+        return {}
+
+    discovered_sound = {}
+
+    # 1. Moduli Tuner FM / Sorgenti (Tipo 2: 2#S) - sorgenti da 1 a 4
+    # Si interrogano con Dimensione 6 (preset) o 4 (frequenza)
+    sources = range(1, 5)
+
+    # 2. Punti Sonori / Amplificatori (Tipo 3: 3#A#P)
+    # Ambienti A da 0 a 9 (incluso 0 per impianti senza configuratori su A o piano terra)
+    environments = range(0, 8) if quick else range(0, 10)
+    sound_points = range(1, 10)
+
+    scan_items = []
+    for s in sources:
+        addr = f"2#{s}"
+        scan_items.append((addr, f"*#22*{addr}*6##", f"Sound Source {addr}", "tuner"))
+
+    for a in environments:
+        for p in sound_points:
+            addr = f"3#{a}#{p}"
+            scan_items.append((addr, f"*#22*{addr}*12##", f"Sound Zone {addr}", "amplifier"))
+
+    async def _query(target_cmd: str, target_addr: str) -> bool:
+        nonlocal session
+        # Drain any stale frames
+        while True:
+            try:
+                await asyncio.wait_for(session._stream_reader.readuntil(OWNSession.SEPARATOR), timeout=0.005)
+            except asyncio.TimeoutError:
+                break
+
+        try:
+            session._stream_writer.write(target_cmd.encode())
+            await session._stream_writer.drain()
+        except (OSError, ConnectionResetError, BrokenPipeError):
+            LOGGER.warning("Connection dropped before sending %s. Reconnecting...", target_cmd)
+            try:
+                await session.close()
+            except Exception:
+                pass
+            await asyncio.sleep(0.3)
+            session = OWNCommandSession(gateway=gateway, logger=LOGGER)
+            await session.connect()
+            session._stream_writer.write(target_cmd.encode())
+            await session._stream_writer.drain()
+
+        got_state = False
+        deadline = asyncio.get_event_loop().time() + 0.45
+        try:
+            while asyncio.get_event_loop().time() < deadline:
+                remaining = max(0.01, deadline - asyncio.get_event_loop().time())
+                raw_response = await asyncio.wait_for(
+                    session._stream_reader.readuntil(OWNSession.SEPARATOR),
+                    timeout=remaining,
+                )
+                frame = raw_response.decode().strip()
+
+                if f"*22*{target_addr}" in frame or f"*#22*{target_addr}" in frame:
+                    got_state = True
+
+                if frame in ("*#*0##", "*#*1##"):
+                    break
+        except asyncio.TimeoutError:
+            pass
+        except (ConnectionResetError, asyncio.IncompleteReadError, BrokenPipeError, OSError) as conn_err:
+            LOGGER.warning("Connection lost scanning sound %s: %s. Reconnecting...", target_addr, conn_err)
+            try:
+                await session.close()
+            except Exception:
+                pass
+            await asyncio.sleep(0.3)
+            session = OWNCommandSession(gateway=gateway, logger=LOGGER)
+            await session.connect()
+        except Exception as err:
+            LOGGER.warning("Error scanning sound address %s: %s", target_addr, err)
+
+        return got_state
+
+    try:
+        for addr, cmd, default_name, item_type in scan_items:
+            has_state = await _query(cmd, addr)
+
+            # Se la dimensione 12 non ha risposto (es. amplificatore in standby profondo),
+            # tentiamo con la dimensione volume 1 (*#22*3#A#P*1##) o richiesta stato generale
+            if not has_state and item_type == "amplifier":
+                has_state = await _query(f"*#22*{addr}*1##", addr)
+                if not has_state:
+                    has_state = await _query(f"*#22*{addr}##", addr)
+
+            if has_state:
+                dev_id = f"22-{addr}"
+                discovered_sound[dev_id] = {
+                    "who": "22",
+                    "where": addr,
+                    "name": default_name,
+                }
+                LOGGER.info("Discovered Sound Diffusion device at WHO 22, WHERE %s (%s)", addr, item_type)
+
+            await asyncio.sleep(0.02)
+
+    finally:
+        try:
+            await session.close()
+        except Exception:
+            pass
+
+    return discovered_sound
+
+
 async def async_discover_all_devices(gateway, quick: bool = False) -> Dict[str, Dict[str, dict]]:
-    """Perform an active scan of all possible bus addresses for lights, covers, and climate."""
+    """Perform an active scan of all possible bus addresses for lights, covers, climate, and sound."""
     discovered = {}
     
     if quick:
@@ -175,7 +291,7 @@ async def async_discover_all_devices(gateway, quick: bool = False) -> Dict[str, 
                 ptp_addresses.append(f"{a}{pl}")
         climate_addresses = [str(z) for z in range(1, 100)]
     
-    # Lights (WHO = 1)
+    # 1. Lights (WHO = 1)
     LOGGER.info("Starting active bus scan for Lights...")
     lights = await async_scan_bus(gateway, "1", ptp_addresses)
     if lights:
@@ -189,7 +305,7 @@ async def async_discover_all_devices(gateway, quick: bool = False) -> Dict[str, 
                 "dimmable": False
             }
             
-    # Covers (WHO = 2)
+    # 2. Covers (WHO = 2)
     LOGGER.info("Starting active bus scan for Covers...")
     covers = await async_scan_bus(gateway, "2", ptp_addresses)
     if covers:
@@ -202,7 +318,7 @@ async def async_discover_all_devices(gateway, quick: bool = False) -> Dict[str, 
                 "name": f"Cover {addr}"
             }
             
-    # Climate (WHO = 4)
+    # 3. Climate (WHO = 4)
     LOGGER.info("Starting active bus scan for Climate zones...")
     climates = await async_scan_bus(gateway, "4", climate_addresses)
     if climates:
@@ -215,10 +331,17 @@ async def async_discover_all_devices(gateway, quick: bool = False) -> Dict[str, 
                 "name": f"Zone {addr}"
             }
             
+    # 4. Sound Diffusion (WHO = 22): Punti sonori 3#A#P e Tuner 2#S
+    LOGGER.info("Starting active bus scan for Sound Diffusion zones (WHO 22)...")
+    sound_devices_22 = await async_scan_sound_who22(gateway, quick=quick)
+    if sound_devices_22:
+        if "media_player" not in discovered:
+            discovered["media_player"] = {}
+        discovered["media_player"].update(sound_devices_22)
+
     if not quick:
-        # Sound Diffusion (WHO = 16)
+        # 5. Legacy Sound Diffusion (WHO = 16)
         LOGGER.info("Starting active bus scan for Sound Diffusion zones (WHO 16)...")
-        # WHO 16 addresses: single digit 1-9, two-digit 11-99, and stereo amplifier zones 110-149
         audio_addresses = [str(a) for a in range(1, 10)] + ptp_addresses
         for zone in range(11, 15):
             for sub in range(0, 10):
@@ -226,27 +349,15 @@ async def async_discover_all_devices(gateway, quick: bool = False) -> Dict[str, 
                 
         audio_zones = await async_scan_bus(gateway, "16", audio_addresses)
         if audio_zones:
-            discovered["media_player"] = {}
-            for addr in audio_zones:
-                dev_id = f"16-{addr}"
-                discovered["media_player"][dev_id] = {
-                    "who": "16",
-                    "where": addr,
-                    "name": f"Sound Zone {addr}"
-                }
-
-        # Sound Diffusion (WHO = 22)
-        LOGGER.info("Starting active bus scan for Sound Diffusion zones (WHO 22)...")
-        audio_zones_22 = await async_scan_bus(gateway, "22", ptp_addresses)
-        if audio_zones_22:
             if "media_player" not in discovered:
                 discovered["media_player"] = {}
-            for addr in audio_zones_22:
-                dev_id = f"22-{addr}"
-                discovered["media_player"][dev_id] = {
-                    "who": "22",
-                    "where": addr,
-                    "name": f"Sound Zone {addr}"
-                }
-            
+            for addr in audio_zones:
+                dev_id = f"16-{addr}"
+                if dev_id not in discovered["media_player"]:
+                    discovered["media_player"][dev_id] = {
+                        "who": "16",
+                        "where": addr,
+                        "name": f"Sound Zone {addr}"
+                    }
+
     return discovered

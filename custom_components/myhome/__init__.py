@@ -1,10 +1,11 @@
 """ MyHOME integration. """
 
 from pathlib import Path
+import os
 import aiofiles
 import yaml
 
-from OWNd.message import OWNCommand, OWNGatewayCommand
+from .ownd.message import OWNCommand, OWNGatewayCommand
 
 from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -90,10 +91,39 @@ async def _async_register_frontend(hass: HomeAssistant):
             hass.bus.async_listen_once("homeassistant_started", _async_register_lovelace_resource)
 
 
+async def _async_ensure_radio_logos(hass: HomeAssistant):
+    """Ensure bundled radio logos are deployed to /config/www/loghi_radio without overwriting user files."""
+    def _sync_logos():
+        try:
+            component_logos_dir = Path(__file__).parent / "logos"
+            if not component_logos_dir.exists():
+                return
+
+            target_dir = Path(hass.config.path("www", "loghi_radio"))
+            target_dir.mkdir(parents=True, exist_ok=True)
+
+            copied_count = 0
+            for logo_file in component_logos_dir.iterdir():
+                if logo_file.is_file() and logo_file.suffix.lower() in (".png", ".jpg", ".jpeg", ".svg"):
+                    dest_file = target_dir / logo_file.name
+                    if not dest_file.exists():
+                        import shutil
+                        shutil.copy2(logo_file, dest_file)
+                        copied_count += 1
+
+            if copied_count > 0:
+                LOGGER.info("MyHOME: Automatically deployed %d bundled radio logo(s) to %s", copied_count, target_dir)
+        except Exception as err:
+            LOGGER.warning("MyHOME: Could not auto-deploy bundled radio logos: %s", err)
+
+    await hass.async_add_executor_job(_sync_logos)
+
+
 async def async_setup(hass, config):
     """Set up the MyHOME component."""
     hass.data.setdefault(DOMAIN, {})
     await _async_register_frontend(hass)
+    await _async_ensure_radio_logos(hass)
 
     if DOMAIN not in config:
         return True
@@ -105,6 +135,7 @@ async def async_setup(hass, config):
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     await _async_register_frontend(hass)
+    await _async_ensure_radio_logos(hass)
 
     if entry.data[CONF_MAC] not in hass.data[DOMAIN]:
         hass.data[DOMAIN][entry.data[CONF_MAC]] = {}
@@ -211,13 +242,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     entity_registry = er.async_get(hass)
     device_registry = dr.async_get(hass)
 
+    _mfg = hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_ENTITY].manufacturer
+    if isinstance(_mfg, list):
+        _mfg = ", ".join(str(m) for m in _mfg) if _mfg else "BTicino S.p.A."
+    elif not isinstance(_mfg, str):
+        _mfg = str(_mfg) if _mfg is not None else "BTicino S.p.A."
+
     gateway_device_entry = device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         connections={(dr.CONNECTION_NETWORK_MAC, entry.data[CONF_MAC])},
         identifiers={
             (DOMAIN, hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_ENTITY].unique_id)
         },
-        manufacturer=hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_ENTITY].manufacturer,
+        manufacturer=_mfg,
         name=hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_ENTITY].name,
         model=hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_ENTITY].model,
         sw_version=hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_ENTITY].firmware,
@@ -241,6 +278,49 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_ENTITY].sending_loop(i)
             )
         )
+
+    async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry):
+        """Rebuild decoder pool when options change."""
+        from .decoder_pool import DecoderPool
+        from .const import (
+            CONF_DECODER_ENTITY,
+            CONF_DECODER_SOURCE,
+            CONF_DECODER_PRE_GAIN,
+            CONF_DECODER_SLOTS,
+            CONF_DECODER_MODE,
+            DECODER_MODE_SHARED,
+        )
+        mac = entry.data[CONF_MAC]
+        old_pool = hass.data.get(DOMAIN, {}).get(mac, {}).get("decoder_pool")
+        if old_pool:
+            await old_pool.release_all()
+
+        options = entry.options
+        decoder_map: dict[str, int] = {}
+        pre_gain_map: dict[str, int] = {}
+        decoder_mode = options.get(CONF_DECODER_MODE, DECODER_MODE_SHARED)
+        for i in range(1, CONF_DECODER_SLOTS + 1):
+            entity_id = options.get(CONF_DECODER_ENTITY.format(i), "").strip()
+            source_num = options.get(CONF_DECODER_SOURCE.format(i), i)
+            pre_gain = options.get(CONF_DECODER_PRE_GAIN.format(i), 0)
+            if entity_id and entity_id.startswith("media_player."):
+                decoder_map[entity_id] = int(source_num)
+                pre_gain_map[entity_id] = int(pre_gain)
+
+        pool = DecoderPool(hass, decoder_map, pre_gain_map, mode=decoder_mode)
+        if DOMAIN in hass.data and mac in hass.data[DOMAIN]:
+            hass.data[DOMAIN][mac]["decoder_pool"] = pool
+            hass.data[DOMAIN][mac]["options"] = options
+        LOGGER.info(
+            "MyHOME: decoder pool rebuilt after options update — %d decoder(s) configured",
+            len(decoder_map),
+        )
+        from homeassistant.helpers.dispatcher import async_dispatcher_send
+        async_dispatcher_send(hass, f"myhome_pool_updated_{mac}")
+        async_dispatcher_send(hass, f"myhome_radio_catalog_updated_{mac}")
+
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
+
 
     # Pruning lose entities and devices from the registry
     entity_entries = er.async_entries_for_config_entry(entity_registry, entry.entry_id)
@@ -335,7 +415,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         gateway = call.data.get(ATTR_GATEWAY, None)
         message = call.data.get(ATTR_MESSAGE, None)
         if gateway is None:
-            gateway = list(hass.data[DOMAIN].keys())[0]
+            active_gateways = [k for k, v in hass.data[DOMAIN].items() if isinstance(v, dict) and CONF_ENTITY in v]
+            if not active_gateways:
+                LOGGER.error("No active MyHome gateway found to send message.")
+                return False
+            gateway = active_gateways[0]
         else:
             mac = format_mac(gateway)
             if mac is None:
@@ -377,7 +461,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         output_file = call.data.get("output_file", "myhome_discovered.yaml")
         
         if gateway is None:
-            gateway = list(hass.data[DOMAIN].keys())[0]
+            active_gateways = [k for k, v in hass.data[DOMAIN].items() if isinstance(v, dict) and CONF_ENTITY in v]
+            if not active_gateways:
+                LOGGER.error("No active MyHome gateway found, could not start scan.")
+                return False
+            gateway = active_gateways[0]
         else:
             mac = format_mac(gateway)
             if mac is None:
@@ -442,7 +530,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         output_file = call.data.get("output_file", "myhome_exported.yaml")
         
         if gateway is None:
-            gateway = list(hass.data[DOMAIN].keys())[0]
+            active_gateways = [k for k, v in hass.data[DOMAIN].items() if isinstance(v, dict) and CONF_ENTITY in v]
+            if not active_gateways:
+                LOGGER.error("No active MyHome gateway found, could not export configuration.")
+                return False
+            gateway = active_gateways[0]
         else:
             mac = format_mac(gateway)
             if mac is None:

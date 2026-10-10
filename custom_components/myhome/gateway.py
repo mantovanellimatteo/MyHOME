@@ -27,11 +27,14 @@ from homeassistant.components.sensor import (
     SensorDeviceClass,
     DOMAIN as SENSOR,
 )
-from homeassistant.components.climate import DOMAIN as CLIMATE
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import (
+    device_registry as dr,
+    entity_registry as er,
+    area_registry as ar,
+)
 
-from OWNd.connection import OWNSession, OWNEventSession, OWNCommandSession, OWNGateway
-from OWNd.message import (
+from .ownd.connection import OWNSession, OWNEventSession, OWNCommandSession, OWNGateway
+from .ownd.message import (
     OWNMessage,
     OWNLightingEvent,
     OWNLightingCommand,
@@ -48,6 +51,10 @@ from OWNd.message import (
     OWNScenarioEvent,
     OWNCommand,
     OWNSignaling,
+    OWNSoundEvent,
+    OWNSoundCommand,
+    OWNFilodiffusioneEvent,
+    OWNFilodiffusioneCommand,
 )
 
 from .const import (
@@ -63,6 +70,7 @@ from .const import (
     CONF_SHORT_RELEASE,
     CONF_LONG_PRESS,
     CONF_LONG_RELEASE,
+    EVENT_MYHOME_INTERCOM,
     DOMAIN,
     LOGGER,
 )
@@ -105,6 +113,7 @@ class MyHOMEGatewayHandler:
         self.listening_worker: asyncio.tasks.Task = None
         self.sending_workers: List[asyncio.tasks.Task] = []
         self.send_buffer = asyncio.Queue()
+        self._ducking_active_environments = set()
         self._last_diagnostic_query: Dict[str, float] = {}
 
     def _is_configured_device(self, platform_name: str, target_where: str) -> bool:
@@ -189,9 +198,9 @@ class MyHOMEGatewayHandler:
                 self.is_connected = True
                 self.connected_at = datetime.now(timezone.utc)
                 self.reconnect_count += 1
+                self._notify_connection_change()
                 backoff = 1
                 LOGGER.info("%s Listening session established.", self.log_id)
-                self._notify_connection_change()
 
                 # Active Discovery for supported subsystems (Lighting, Covers, Climate)
                 try:
@@ -199,24 +208,22 @@ class MyHOMEGatewayHandler:
                     await self.send_status_request(OWNCommand.parse("*#2*0##"))   # WHO 2: Automation / Covers
                     await self.send_status_request(OWNCommand.parse("*#4*0##"))   # WHO 4: Climate
                 except Exception as disc_err:
-                    LOGGER.debug("%s Error sending discovery requests: %s", self.log_id, disc_err)
+                    LOGGER.debug("%s Errore invio richieste discovery: %s", self.log_id, disc_err)
 
                 while not self._terminate_listener:
                     message = await _event_session.get_next()
                     if message is None:
                         LOGGER.warning("%s Listening session disconnected. Reconnecting...", self.log_id)
-                        if self.is_connected:
-                            self.is_connected = False
-                            self._notify_connection_change()
                         break
 
-                    try:
-                        LOGGER.warning("[BUS SNIFFER] %s (type=%s)", message, type(message).__name__)
+                    if isinstance(message, OWNSignaling):
+                        continue
 
-                        # Ignore OpenWebNet signaling / handshake frames (ACK, NACK, Nonce, SHA, Session)
-                        if isinstance(message, OWNSignaling):
-                            LOGGER.debug("%s Ignoring OpenWebNet signaling frame: %s", self.log_id, message)
-                            continue
+                    try:
+                        LOGGER.debug("[BUS SNIFFER] %s (type=%s)", message, type(message).__name__)
+
+                        # Handle and dispatch intercom / audio ducking events
+                        self._handle_intercom_events(message)
 
                         if self.generate_events:
                             if isinstance(message, OWNMessage):
@@ -277,7 +284,7 @@ class MyHOMEGatewayHandler:
                                                 notification_id=f"myhome_learned_{dev_id}"
                                             )
                                 except Exception as learn_ex:
-                                    LOGGER.debug("Error in sound auto-learning: %s", learn_ex)
+                                    LOGGER.debug("Errore auto-learning sound: %s", learn_ex)
 
                                 if "media_player" in self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS]:
                                     for dev_id, dev_data in self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS]["media_player"].items():
@@ -310,11 +317,10 @@ class MyHOMEGatewayHandler:
 
                     # Auto-learning logic
                     if self.config_entry.options.get("enable_auto_learning", False):
-                        who = str(getattr(message, "who", "") or "")
-                        where = str(getattr(message, "where", "") or "")
+                        who = str(message.who)
+                        where = str(message.where)
                         platform = None
-                        if who and where:
-                            dev_conf = {"who": who, "where": where}
+                        dev_conf = {"who": who, "where": where}
                         if who == "1":
                             platform = "light"
                             dev_conf["dimmable"] = hasattr(message, "brightness") and message.brightness is not None
@@ -376,7 +382,7 @@ class MyHOMEGatewayHandler:
                         or isinstance(message, OWNDryContactEvent)
                         or isinstance(message, OWNAuxEvent)
                         or isinstance(message, OWNHeatingEvent)
-                        or str(getattr(message, "who", "")) in ["16", "22"]
+                        or str(getattr(message, "who", "")) in ["6", "16", "22"]
                     ):
                         if not message.is_translation:
                             is_event = False
@@ -473,9 +479,13 @@ class MyHOMEGatewayHandler:
                                         who_prefix = "22"
                                     elif not who_prefix and ("*16*" in msg_str or "*#16*" in msg_str):
                                         who_prefix = "16"
+                                    elif not who_prefix and ("*6*" in msg_str or "*#6*" in msg_str):
+                                        who_prefix = "6"
 
                                     if who_prefix in ["22", "16"]:
-                                        LOGGER.info("%s [Sound Bus Sniffer] Received OpenWebNet event: %s", self.log_id, msg_str)
+                                        LOGGER.info("%s [Sound Bus Sniffer] Ricevuto evento OpenWebNet: %s", self.log_id, msg_str)
+                                    elif who_prefix == "6":
+                                        LOGGER.info("%s [Door Entry Sniffer] Ricevuto evento OpenWebNet: %s", self.log_id, msg_str)
 
                                     for _platform in self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS]:
                                         if _platform == BUTTON:
@@ -490,8 +500,8 @@ class MyHOMEGatewayHandler:
                                             if combined_key in platform_devices and combined_key not in matched_keys:
                                                 matched_keys.append(combined_key)
 
-                                        # For Sound messages (WHO 22 / WHO 16), forward to all media_player zones
-                                        # so Tuner events (2#1) and source switches (#4#) are processed immediately
+                                        # Per i messaggi Sound (WHO 22 / WHO 16), inoltra a tutte le zone media_player
+                                        # così che eventi Tuner (2#1) e cambi sorgente (#4#) siano ricevuti istantaneamente
                                         if _platform == "media_player" and who_prefix in ["22", "16"]:
                                             for p_key in platform_devices:
                                                 if p_key not in matched_keys:
@@ -700,8 +710,11 @@ class MyHOMEGatewayHandler:
             worker_id,
         )
 
+        IDLE_TIMEOUT_THRESHOLD = 90.0  # BTicino drops idle command sockets at ~120s
+
         while not self._terminate_sender:
             _command_session = OWNCommandSession(gateway=self.gateway, logger=LOGGER)
+            last_activity_time = None
             try:
                 LOGGER.debug("%s Connecting command session for worker %d...", self.log_id, worker_id)
                 await _command_session.connect()
@@ -709,19 +722,43 @@ class MyHOMEGatewayHandler:
                     raise ConnectionError("Failed to open command streams.")
 
                 backoff = 1
+                last_activity_time = asyncio.get_event_loop().time()
                 LOGGER.debug("%s Command session established for worker %d.", self.log_id, worker_id)
 
                 while not self._terminate_sender:
                     task = await self.send_buffer.get()
+
+                    # Zero-Traffic Smart Refresh:
+                    # Se sono trascorsi più di 90s dall'ultimo comando, la sessione sul gateway è quasi certamente
+                    # scaduta/chiusa in silenzio. Rinnoviamo la connessione al volo in ~100ms per evitare il timeout da 3s.
+                    now = asyncio.get_event_loop().time()
+                    if last_activity_time is None or (now - last_activity_time) >= IDLE_TIMEOUT_THRESHOLD:
+                        LOGGER.debug(
+                            "%s Command session idle for %.1fs (>= 90s). Refreshing connection before sending...",
+                            self.log_id,
+                            now - (last_activity_time or 0),
+                        )
+                        try:
+                            await _command_session.close()
+                        except Exception:
+                            pass
+                        _command_session = OWNCommandSession(gateway=self.gateway, logger=LOGGER)
+                        await _command_session.connect()
+                        if _command_session._stream_writer is None:
+                            self.send_buffer.task_done()
+                            await self.send_buffer.put(task)
+                            raise ConnectionError("Failed to refresh command session.")
+
                     try:
                         LOGGER.debug(
-                            "[%s - %s] Message `%s` was successfully unqueued by worker %s.",
+                            "%s Message `%s` was successfully unqueued by worker %s.",
                             self.name,
                             self.gateway.host,
                             task["message"],
                             worker_id,
                         )
                         await _command_session.send(message=task["message"], is_status_request=task["is_status_request"])
+                        last_activity_time = asyncio.get_event_loop().time()
                         self.send_buffer.task_done()
                     except Exception as task_err:
                         self.send_buffer.task_done()
@@ -729,6 +766,8 @@ class MyHOMEGatewayHandler:
                         if not task.get("is_status_request") and task_retries < 2:
                             task["retries"] = task_retries + 1
                             await self.send_buffer.put(task)
+                            # Primo retry: azzera il backoff per riconnettersi immediatamente senza pause
+                            backoff = 0
                         else:
                             LOGGER.error("%s Dropping failed message `%s` (status_request=%s, retries=%d): %s", self.log_id, task.get("message"), task.get("is_status_request"), task_retries, task_err)
                         raise ConnectionError("Command sending failed, reconnecting...") from task_err
@@ -755,8 +794,11 @@ class MyHOMEGatewayHandler:
                 pass
 
             if not self._terminate_sender:
-                await asyncio.sleep(backoff)
-                backoff = min(backoff * 2, 120)
+                if backoff > 0:
+                    await asyncio.sleep(backoff)
+                    backoff = min(backoff * 2, 120)
+                else:
+                    backoff = 1
 
         LOGGER.debug(
             "%s Destroying sending worker %s",
@@ -780,9 +822,210 @@ class MyHOMEGatewayHandler:
         )
 
     async def send_status_request(self, message: OWNCommand):
-        await self.send_buffer.put({"message": message, "is_status_request": True})
+        """Send a non-critical status request with low priority, 0 retries and drop-on-error behavior."""
+        if not self.is_connected:
+            return
+        await self.send_buffer.put({
+            "message": message,
+            "retries": 0,
+            "is_status_request": True,
+        })
         LOGGER.debug(
-            "%s Message `%s` was successfully queued.",
+            "%s Status request `%s` was queued.",
             self.log_id,
             message,
         )
+
+    def _resolve_zone_metadata(self, who: int, where: str) -> dict:
+        """Dynamically resolve OpenWebNet address to Home Assistant entity, device, and area metadata."""
+        meta = {}
+        if not where:
+            return meta
+
+        # 1. Parse OpenWebNet hierarchical address parts
+        if "#" in where:
+            parts = where.split("#")
+            # e.g., '3#7#4' -> type 3, environment 7, point 4
+            if len(parts) == 3 and parts[1].isdigit():
+                meta["environment"] = int(parts[1])
+                meta["point"] = int(parts[2]) if parts[2].isdigit() else parts[2]
+            # e.g., '5#3#7#7' -> type 5, source 3, environment 7, point 7
+            elif len(parts) == 4 and parts[2].isdigit():
+                meta["environment"] = int(parts[2])
+                meta["point"] = int(parts[3]) if parts[3].isdigit() else parts[3]
+
+        try:
+            ent_reg = er.async_get(self.hass)
+            dev_reg = dr.async_get(self.hass)
+            area_reg = ar.async_get(self.hass)
+
+            # Search in platform entities for matching WHERE / environment
+            target_entity = None
+            platforms_data = self.hass.data.get(DOMAIN, {}).get(self.mac, {}).get(CONF_PLATFORMS, {})
+            env_val = meta.get("environment")
+
+            for plat_name, devices in platforms_data.items():
+                if plat_name == BUTTON or not isinstance(devices, dict):
+                    continue
+                for dev_id, dev_data in devices.items():
+                    if not isinstance(dev_data, dict):
+                        continue
+                    dev_where = dev_id.split("-")[-1] if "-" in dev_id else dev_id
+                    is_match = False
+                    if dev_where == where:
+                        is_match = True
+                    elif env_val is not None and f"#{env_val}#" in dev_where:
+                        is_match = True
+
+                    if is_match:
+                        for ent_domain, entity_inst in dev_data.get(CONF_ENTITIES, {}).items():
+                            if hasattr(entity_inst, "entity_id") and entity_inst.entity_id:
+                                target_entity = entity_inst
+                                break
+                    if target_entity:
+                        break
+                if target_entity:
+                    break
+
+            if target_entity:
+                meta["entity_id"] = target_entity.entity_id
+                if hasattr(target_entity, "name") and target_entity.name:
+                    meta["device_name"] = target_entity.name
+
+                # Look up Area via Entity Registry or Device Registry
+                entry = ent_reg.async_get(target_entity.entity_id)
+                area_id = None
+                if entry:
+                    if entry.area_id:
+                        area_id = entry.area_id
+                    elif entry.device_id:
+                        device = dev_reg.async_get(entry.device_id)
+                        if device:
+                            if not meta.get("device_name"):
+                                meta["device_name"] = device.name_by_user or device.name
+                            if device.area_id:
+                                area_id = device.area_id
+
+                if area_id:
+                    area_entry = area_reg.async_get_area(area_id)
+                    if area_entry:
+                        meta["area"] = area_entry.name
+
+        except Exception as ex:
+            LOGGER.debug("%s Error resolving zone metadata for where=%s: %s", self.log_id, where, ex)
+
+        return meta
+
+    def _handle_intercom_events(self, message):
+        """Analyze incoming OpenWebNet message and fire myhome_intercom_event if applicable."""
+        msg_str = str(message).strip()
+        if not msg_str:
+            return
+
+        try:
+            # 1. Sound Diffusion Intercom Ducking (WHO 22 / Dimension 12)
+            # E.g., *#22*3#7#4*12*0*10## -> Broadcast Ducking active (intercom call in progress)
+            if "*12*0*" in msg_str and ("*22*" in msg_str or "*#22*" in msg_str):
+                clean = msg_str.strip("#").split("*")
+                where = clean[2] if len(clean) > 2 else ""
+                meta = self._resolve_zone_metadata(22, where)
+                point_val = meta.get("point")
+                env_val = meta.get("environment")
+
+                # Must be a broadcast ducking telegram (point == 4 or point == 0) and not an individual standby (e.g. 3#7#5)
+                if point_val in [4, 0, "4", "0"] or where.endswith("#4") or where.endswith("#0"):
+                    if env_val is not None:
+                        self._ducking_active_environments.add(env_val)
+                    payload = {
+                        "event": "ducking_start",
+                        "who": 22,
+                        "dimension": 12,
+                        "where": where,
+                        "message": msg_str,
+                    }
+                    payload.update(meta)
+                    self.hass.bus.async_fire(EVENT_MYHOME_INTERCOM, payload)
+                    LOGGER.info("%s Intercom Event fired: ducking_start (where=%s, area=%s, env=%s)", self.log_id, where, meta.get("area"), env_val)
+                else:
+                    LOGGER.debug("%s Ignoring single-amplifier standby frame: %s (where=%s)", self.log_id, msg_str, where)
+
+            # 2. Sound Diffusion Volume Restore (End of call / ducking end)
+            # E.g., *#22*3#7#7*1*12## -> Restores normal volume after call
+            elif ("*1*" in msg_str or "*#1*" in msg_str) and ("*22*" in msg_str or "*#22*" in msg_str) and not ("*1*1##" in msg_str or "*#*1##" in msg_str):
+                clean = msg_str.strip("#").split("*")
+                if len(clean) >= 4 and clean[3].isdigit():
+                    where = clean[2] if len(clean) > 2 else ""
+                    vol = clean[3] if len(clean) > 3 else ""
+                    meta = self._resolve_zone_metadata(22, where)
+                    env_val = meta.get("environment")
+
+                    # Only fire ducking_end if ducking was actively in progress for this environment
+                    if env_val in self._ducking_active_environments:
+                        self._ducking_active_environments.discard(env_val)
+                        payload = {
+                            "event": "ducking_end",
+                            "who": 22,
+                            "dimension": 1,
+                            "volume": int(vol),
+                            "where": where,
+                            "message": msg_str,
+                        }
+                        payload.update(meta)
+                        self.hass.bus.async_fire(EVENT_MYHOME_INTERCOM, payload)
+                        LOGGER.info("%s Intercom Event fired: ducking_end (where=%s, vol=%s, area=%s)", self.log_id, where, vol, meta.get("area"))
+                    else:
+                        LOGGER.debug("%s Normal volume update ignored for ducking_end: %s (where=%s)", self.log_id, msg_str, where)
+
+            # 3. Intercom Ring / External Call trigger (WHO 1 with WHERE 24 or auxiliary relay)
+            elif msg_str.startswith("*1*1*24##") or msg_str.startswith("*1*1000#1*24##"):
+                payload = {
+                    "event": "call_started",
+                    "who": 1,
+                    "what": 1,
+                    "where": "24",
+                    "message": msg_str,
+                }
+                meta = self._resolve_zone_metadata(1, "24")
+                payload.update(meta)
+                self.hass.bus.async_fire(EVENT_MYHOME_INTERCOM, payload)
+                LOGGER.info("%s Intercom Event fired: call_started (where=24)", self.log_id)
+
+            # 4. Video Door Entry (WHO 7)
+            elif msg_str.startswith("*7*") or msg_str.startswith("*#7*"):
+                clean = msg_str.strip("#").split("*")
+                what = clean[2] if len(clean) > 2 else ""
+                where = clean[3] if len(clean) > 3 else ""
+                evt = "video_call" if what == "0" else ("video_end" if what == "1" else "video_event")
+                payload = {
+                    "event": evt,
+                    "who": 7,
+                    "what": what,
+                    "where": where,
+                    "message": msg_str,
+                }
+                meta = self._resolve_zone_metadata(7, where)
+                payload.update(meta)
+                self.hass.bus.async_fire(EVENT_MYHOME_INTERCOM, payload)
+                LOGGER.info("%s Intercom Event fired: %s (who=7, where=%s, area=%s)", self.log_id, evt, where, meta.get("area"))
+
+            # 5. Legacy Door Entry / Lock (WHO 6)
+            elif msg_str.startswith("*6*") or msg_str.startswith("*#6*"):
+                clean = msg_str.strip("#").split("*")
+                what = clean[2] if len(clean) > 2 else ""
+                where = clean[3] if len(clean) > 3 else ""
+                evt = "door_open" if what in ["10", "1"] else "call_started"
+                payload = {
+                    "event": evt,
+                    "who": 6,
+                    "what": what,
+                    "where": where,
+                    "message": msg_str,
+                }
+                meta = self._resolve_zone_metadata(6, where)
+                payload.update(meta)
+                self.hass.bus.async_fire(EVENT_MYHOME_INTERCOM, payload)
+                LOGGER.info("%s Intercom Event fired: %s (who=6, where=%s, area=%s)", self.log_id, evt, where, meta.get("area"))
+        except Exception as err:
+            LOGGER.debug("%s Error analyzing intercom event: %s", self.log_id, err)
+
+

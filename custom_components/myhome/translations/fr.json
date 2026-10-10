@@ -55,24 +55,91 @@
   },
   "options": {
     "step": {
+      "decoders": {
+        "title": "Décodeurs de Streaming (Dynamic Proxy)",
+        "description": "Configurez jusqu'à 4 lecteurs multimédia physiques (Echo Dot, Wiim, etc.) connectés aux entrées AUX de la matrice BTicino",
+        "data": {
+          "decoder_mode": "Mode de Routage des Streamers",
+          "decoder_1_entity": "Décodeur Slot 1 (media_player)",
+          "decoder_1_source": "Source BTicino Slot 1 (1-4)",
+          "decoder_1_pre_gain": "Pré-gain Slot 1 (offset anti-souffle 0-50%)",
+          "decoder_2_entity": "Décodeur Slot 2 (media_player)",
+          "decoder_2_source": "Source BTicino Slot 2 (1-4)",
+          "decoder_2_pre_gain": "Pré-gain Slot 2 (offset anti-souffle 0-50%)",
+          "decoder_3_entity": "Décodeur Slot 3 (media_player)",
+          "decoder_3_source": "Source BTicino Slot 3 (1-4)",
+          "decoder_3_pre_gain": "Pré-gain Slot 3 (offset anti-souffle 0-50%)",
+          "decoder_4_entity": "Décodeur Slot 4 (media_player)",
+          "decoder_4_source": "Source BTicino Slot 4 (1-4)",
+          "decoder_4_pre_gain": "Pré-gain Slot 4 (offset anti-souffle 0-50%)"
+        }
+      },
+      "radio": {
+        "title": "Tuner Radio FM (F500)",
+        "description": "Configurer le catalogue des fréquences radio FM et les logos des stations",
+        "data": {
+          "radio_zone_profile": "Zone / Profil Géographique des Fréquences",
+          "radio_custom_frequencies": "Catalogue de Fréquences Personnalisées (format: Fréquence: Nom Station, une par ligne)",
+          "radio_enable_logos": "Afficher les logos officiels des stations (stockage local)",
+          "radio_logos_path": "Chemin web des logos radio (URL locale, ex. /local/loghi_radio)"
+        }
+      },
       "user": {
         "title": "Options MyHome",
-        "description": "Parametres système avancés",
+        "description": "Paramètres système avancés",
         "data": {
           "address": "Adresse IP",
           "password": "Mot de passe",
           "config_file_path": "Chemin du fichier de configuration",
-          "command_worker_count": "Nombre de session de commande simultanées",
-          "generate_events": "Générer des événements dans Home Assistant pour chaque message reçu"
+          "command_worker_count": "Nombre de sessions de commande simultanées",
+          "generate_events": "Générer des événements dans Home Assistant pour chaque message reçu",
+          "enable_auto_learning": "Activer l'auto-apprentissage en arrière-plan (détecte les nouveaux appareils)"
         }
       }
     },
     "error": {
       "invalid_ip": "Adresse IP invalide",
-      "invalid_worker_count": "Workers must be between 1 and 10",
+      "invalid_worker_count": "Le nombre de workers doit être compris entre 1 et 10",
       "invalid_config_path": "Fichier de configuration inexistant à ce chemin",
       "invalid_password": "Mot de passe invalide",
-      "password_error": "Mot de passe invalide"
+      "password_error": "Erreur de mot de passe",
+      "not_a_media_player": "L'entité doit appartenir au domaine media_player",
+      "mass_entity_not_allowed": "Les entités Music Assistant ne peuvent pas être utilisées comme décodeurs"
+    },
+    "abort": {
+      "scan_completed": "Balayage actif terminé ! {count} nouveaux appareils trouvés.",
+      "scan_failed": "Le balayage actif a échoué. Consultez les logs pour plus de détails.",
+      "sniff_completed": "Sniffing passif terminé ! {count} nouveaux appareils trouvés.",
+      "sniff_failed": "Le sniffing passif a échoué. Consultez les logs pour plus de détails."
+    }
+  },
+  "selector": {
+    "menu_options": {
+      "options": {
+        "settings": "Configurer les paramètres de la passerelle",
+        "decoders": "Configurer les Décodeurs de Streaming (Dynamic Proxy)",
+        "radio": "Configurer le Tuner Radio FM (F500)",
+        "scan": "Balayage actif du bus",
+        "sniff": "Sniffing passif du bus"
+      }
+    },
+    "decoder_mode": {
+      "options": {
+        "shared": "Source Partagée (Multiroom / Entrée commune)",
+        "exclusive": "Canaux de Matrice Exclusifs (1 Streamer par Pièce)"
+      }
+    },
+    "radio_zone": {
+      "options": {
+        "piemonte_nord": "Pémont Nord (Turin, Ivrée, Biella, Novare)",
+        "lombardia_milano": "Lombardie (Milan et environs)",
+        "lazio_roma": "Latium (Rome et environs)",
+        "veneto": "Vénétie (Padoue, Venise, Vérone)",
+        "emilia_romagna": "Émilie-Romagne (Bologne et environs)",
+        "toscana": "Toscane (Florence et environs)",
+        "campania_napoli": "Campanie (Naples et environs)",
+        "custom": "Personnalisé (Utiliser uniquement les fréquences personnalisées)"
+      }
     }
   },
   "services": {

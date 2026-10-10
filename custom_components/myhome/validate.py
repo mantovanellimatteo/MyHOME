@@ -432,9 +432,11 @@ climate_schema = MyHomeDeviceSchema(
 
 media_player_schema = MyHomeDeviceSchema(
     {
-        Required(CONF_WHERE): str,
-        Required(CONF_WHO): str,
-        Optional(CONF_NAME): str,
+        Required(str): {
+            Required(CONF_WHERE): str,
+            Required(CONF_WHO): str,
+            Optional(CONF_NAME): str,
+        }
     }
 )
 

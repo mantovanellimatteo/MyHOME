@@ -4,73 +4,33 @@
     "flow_title": "Gateway MyHome {name} ({host})",
     "step": {
       "user": {
-        "title": "\ud83e\ude84 Collega il tuo Gateway MyHOME",
-        "description": "\ud83e\ude84 **Modalit\u00e0 Zero-Knowledge:** Il tuo gateway viene rilevato automaticamente sulla rete locale.\n\nAttiva la **MODALIT\u00c0 NERD \ud83e\udd13** se desideri configurare manualmente indirizzo IP, porta, indirizzo MAC e modello.",
+        "title": "Scegli il tuo gateway \"MyHome\"",
         "data": {
-          "gateway_select": "\ud83c\udfe0 Gateway Rilevato",
-          "nerd_mode": "\ud83e\udd13 MODALIT\u00c0 NERD (Configurazione manuale)"
-        },
-        "data_description": {
-          "gateway_select": "Seleziona il gateway MyHOME trovato automaticamente sulla tua rete locale.",
-          "nerd_mode": "Abilita questo interruttore se desideri inserire a mano tutti i parametri tecnici del gateway (IP, Porta, MAC, Modello)."
+          "host": "Indirizzo Ip"
         }
       },
       "port": {
-        "title": "\ud83d\udd0c Porta del Gateway",
-        "description": "Inserisci la porta utilizzata per la comunicazione OpenWebNet con il gateway {name} ({host})",
+        "title": "Porta del Gateway",
+        "description": "Inserisci la porta utilizzata per la comunicazione OpenWebNet con il gateway {name} {host}",
         "data": {
-          "port": "\ud83d\udd0c Porta"
+          "port": "Porta"
         }
       },
       "password": {
-        "title": "\ud83d\udd11 Password del Gateway",
-        "description": "Inserisci la password OpenWebNet per il gateway {name} ({host}).\n\n*(Lascia vuoto o inserisci la password solo se richiesta dal tuo gateway)*",
+        "title": "Porta del Gateway",
+        "description": "Inserisci la password OpenWebNet per il gateway {name} {host}",
         "data": {
-          "password": "\ud83d\udd11 Password"
+          "password": "Password"
         }
       },
       "custom": {
-        "title": "\ud83e\udd13 Configurazione Manuale (Modalit\u00e0 Nerd)",
-        "description": "Hai il controllo completo su tutti i parametri del tuo gateway OpenWebNet.",
+        "title": "Inserimento manuale gateway",
+        "description": "Compila con le impostazioni del tuo gateway",
         "data": {
-          "address": "\ud83c\udf10 Indirizzo IP Gateway",
-          "port": "\ud83d\udd0c Porta OpenWebNet",
-          "serialNumber": "\ud83c\udff7\ufe0f Indirizzo MAC Gateway",
-          "modelName": "\ud83d\udce6 Modello Gateway"
-        },
-        "data_description": {
-          "address": "L'indirizzo IPv4 locale del tuo gateway OpenWebNet (es. 192.168.1.50).",
-          "port": "Porta standard OpenWebNet (predefinita 20000).",
-          "serialNumber": "Indirizzo hardware MAC esadecimale del gateway.",
-          "modelName": "Identificativo del modello (es. F454, AM4890, MyHomeServer1)."
-        }
-      },
-      "nerd": {
-        "title": "\ud83e\udd13 Configurazione Manuale (Modalit\u00e0 Nerd)",
-        "description": "Hai il controllo completo su tutti i parametri del tuo gateway OpenWebNet.",
-        "data": {
-          "address": "\ud83c\udf10 Indirizzo IP Gateway",
-          "port": "\ud83d\udd0c Porta OpenWebNet",
-          "serialNumber": "\ud83c\udff7\ufe0f Indirizzo MAC Gateway",
-          "modelName": "\ud83d\udce6 Modello Gateway"
-        },
-        "data_description": {
-          "address": "L'indirizzo IPv4 locale del tuo gateway OpenWebNet (es. 192.168.1.50).",
-          "port": "Porta standard OpenWebNet (predefinita 20000).",
-          "serialNumber": "Indirizzo hardware MAC esadecimale del gateway.",
-          "modelName": "Identificativo del modello (es. F454, AM4890, MyHomeServer1)."
-        }
-      },
-      "welcome": {
-        "title": "\ud83c\udf89 Benvenuto in MyHOME!",
-        "description": "\ud83c\udfe0 **Gateway connesso con successo!**\n* **Modello:** {name}\n* **Indirizzo:** {host}\n* **MAC:** {mac}\n\n---\n\ud83e\ude84 **Configurazione Iniziale Dispositivi:**\nScegli come desideri popolare i dispositivi del tuo impianto.\n\n\ud83d\udca1 **Nota sul Passive Sniffing:**\nSe alcuni comandi (come i moduli scenari a 4 pulsanti, contatti o comandi speciali) non dovessero comparire con la scansione automatica, potrai aggiungerli in qualsiasi momento abilitando lo **Sniffing Passivo del Bus** dal menu *Configura* dell'integrazione: baster\u00e0 premere i pulsanti fisici a parete per catturarli e registrarli istantaneamente!",
-        "data": {
-          "auto_scan": "\ud83d\udd0d SCANSIONE AUTOMATICA BUS SCS",
-          "import_yaml": "\ud83d\udcc1 IMPORTA DA MYHOME.YAML"
-        },
-        "data_description": {
-          "auto_scan": "Interroga attivamente il bus per rilevare in automatico tutte le luci, tapparelle, zone clima e diffusione sonora.",
-          "import_yaml": "Importa tutti i dispositivi configurati nel file myhome.yaml e lo rinomina automaticamente in .old per prevenire conflitti."
+          "address": "Indirizzo IP",
+          "port": "Porta",
+          "serialNumber": "Indirizzo MAC",
+          "modelName": "Tipo di gateway"
         }
       }
     },
@@ -80,29 +40,20 @@
       "invalid_mac": "Indirizzo MAC non valido",
       "invalid_password": "Password non valida",
       "password_retry": "Il gateway non ha accettato la password, aspetta 60s prima di riprovare.",
-      "password_error": "Password non valida",
-      "missing_ip": "Inserisci un indirizzo IP o seleziona un gateway rilevato",
-      "no_gateway_found": "Nessun gateway rilevato sulla rete locale. Attiva la MODALIT\u00c0 NERD \ud83e\udd13 per inserire i dati a mano."
+      "password_error": "Password non valida"
     },
     "abort": {
       "discover_timeout": "Impossibile trovare il gateway MyHome",
       "no_gateways": "Nessun gateway MyHome trovato",
-      "all_configured": "Tutti i gateway MyHome sono gi\u00e0 configurati",
-      "unknown": "Si \u00e8 verificato un errore sconosciuto",
+      "all_configured": "Tutti i gateway MyHome sono già configurati",
+      "unknown": "Si è verificato un errore sconosciuto",
       "cannot_connect": "Impossibile connettersi al gateway",
-      "already_configured": "Questo gateway \u00e8 gi\u00e0 configurato",
-      "already_in_progress": "La configurazione di questo gateway \u00e8 gi\u00e0 in corso",
+      "already_configured": "Questo gateway è già configurato",
+      "already_in_progress": "La configurazione di questo gateway è già in corso",
       "reauth_successful": "Nuova password accettata"
-    },
-    "progress": {
-      "scanning_bus": "🔍 Scansione del bus SCS in corso... Ricerca luci, tapparelle e zone clima..."
     }
   },
   "options": {
-    "progress": {
-      "scanning_bus": "🔍 Scansione del bus SCS in corso... Ricerca luci, tapparelle e zone clima...",
-      "sniffing_bus": "🎧 Ascolto passivo del bus in corso... Premi i tasti fisici sui muri per apprenderli!"
-    },
     "step": {
       "menu": {
         "title": "Seleziona Azione",
@@ -113,13 +64,48 @@
       },
       "scan_active": {
         "title": "Scansione Attiva del Bus",
-        "description": "Questo eseguir\u00e0 una scansione di tutti gli indirizzi standard sul bus SCS per luci, tapparelle e zone di riscaldamento. Richiede circa 10-15 secondi. Vuoi avviare?"
+        "description": "Questo eseguirà una scansione completa di tutti gli indirizzi sul bus SCS per luci, tapparelle, termoregolazione e diffusione sonora (amplificatori e sintonizzatore radio F500). Richiede circa 25-35 secondi. Vuoi avviare?"
       },
       "sniff_passive": {
         "title": "Sniffing Passivo del Bus",
-        "description": "Questo rimarr\u00e0 in ascolto degli eventi sul bus. Gira per casa e premi gli interruttori/pulsanti a parete per farli rilevare. Scegli la durata dell'ascolto qui sotto.",
+        "description": "Questo rimarrà in ascolto degli eventi sul bus. Gira per casa e premi gli interruttori/pulsanti a parete per farli rilevare. Scegli la durata dell'ascolto qui sotto.",
         "data": {
           "duration": "Durata (secondi)"
+        }
+      },
+      "decoders": {
+        "title": "Configurazione Decoder Streaming (Dynamic Proxy)",
+        "description": "Seleziona la modalità di instradamento per gli streamer (es. Echo Dot, Arylic, WiiM) collegati agli ingressi AUX della matrice BTicino.",
+        "data": {
+          "decoder_mode": "Modalità Instradamento Streamer"
+        }
+      },
+      "decoders_slots": {
+        "title": "Configurazione Ingressi e Guadagno Streamer",
+        "description": "Mappa l'entità dello streamer sul relativo ingresso AUX della matrice BTicino e imposta il pre-gain anti-fruscio.",
+        "data": {
+          "decoder_1_entity": "Decoder Slot 1 (media_player)",
+          "decoder_1_source": "Sorgente BTicino Slot 1 (1-4)",
+          "decoder_1_pre_gain": "Pre-gain Slot 1 (offset anti-fruscio 0-50%)",
+          "decoder_2_entity": "Decoder Slot 2 (media_player)",
+          "decoder_2_source": "Sorgente BTicino Slot 2 (1-4)",
+          "decoder_2_pre_gain": "Pre-gain Slot 2 (offset anti-fruscio 0-50%)",
+          "decoder_3_entity": "Decoder Slot 3 (media_player)",
+          "decoder_3_source": "Sorgente BTicino Slot 3 (1-4)",
+          "decoder_3_pre_gain": "Pre-gain Slot 3 (offset anti-fruscio 0-50%)",
+          "decoder_4_entity": "Decoder Slot 4 (media_player)",
+          "decoder_4_source": "Sorgente BTicino Slot 4 (1-4)",
+          "decoder_4_pre_gain": "Pre-gain Slot 4 (offset anti-fruscio 0-50%)"
+        }
+      },
+      "radio": {
+        "title": "Sintonizzatore Radio FM (F500)",
+        "description": "Configura il catalogo delle frequenze radio FM e i loghi delle emittenti",
+        "data": {
+          "radio_zone_profile": "Zona / Profilo Geografico Frequenze",
+          "radio_custom_frequencies": "Catalogo Frequenze Personalizzate (formato: Frequenza: Nome Emittente, una per riga)",
+          "radio_enable_logos": "Mostra i loghi ufficiali delle stazioni radio (archivio locale)",
+          "radio_logos_path": "Percorso web loghi radio (URL locale, es. /local/loghi_radio)"
         }
       },
       "user": {
@@ -133,10 +119,6 @@
           "generate_events": "Genera eventi in Home Assistant per ogni messaggio ricevuto",
           "enable_auto_learning": "Abilita auto-apprendimento in background (rileva nuovi dispositivi quando vengono usati)"
         }
-      },
-      "import_yaml": {
-        "title": "Importa da YAML",
-        "description": "{summary}"
       }
     },
     "error": {
@@ -144,7 +126,9 @@
       "invalid_worker_count": "I workers devono essere compresi tra 1 e 10",
       "invalid_config_path": "Il file di configurazione non esiste in questo percorso",
       "invalid_password": "Password non valida",
-      "password_error": "Errore password"
+      "password_error": "Errore password",
+      "not_a_media_player": "L'entità deve appartenere al dominio media_player",
+      "mass_entity_not_allowed": "Le entità Music Assistant non possono essere usate come decoder"
     },
     "abort": {
       "scan_completed": "Scansione attiva completata! Trovati {count} nuovi dispositivi.",
@@ -157,8 +141,28 @@
     "menu_options": {
       "options": {
         "settings": "Configura impostazioni gateway",
+        "decoders": "Configura Decoder Streaming (Dynamic Proxy)",
+        "radio": "Configura Sintonizzatore Radio FM (F500)",
         "scan": "Scansione attiva del bus",
         "sniff": "Sniffing passivo del bus"
+      }
+    },
+    "decoder_mode": {
+      "options": {
+        "shared": "Sorgente Condivisa (Multiroom / Ingresso comune)",
+        "exclusive": "Matrice Esclusiva (1 Streamer per Stanza)"
+      }
+    },
+    "radio_zone": {
+      "options": {
+        "piemonte_nord": "Piemonte Nord (Torino, Ivrea, Biella, Novara)",
+        "lombardia_milano": "Lombardia (Milano e dintorni)",
+        "lazio_roma": "Lazio (Roma e dintorni)",
+        "veneto": "Veneto (Padova, Venezia, Verona)",
+        "emilia_romagna": "Emilia-Romagna (Bologna e dintorni)",
+        "toscana": "Toscana (Firenze e dintorni)",
+        "campania_napoli": "Campania (Napoli e dintorni)",
+        "custom": "Personalizzato (Usa solo frequenze personalizzate)"
       }
     }
   },
@@ -205,18 +209,6 @@
   "device_automation": {
     "trigger_type": {
       "scenario_button_pressed": "Pulsante {subtype} premuto"
-    }
-  },
-  "entity": {
-    "binary_sensor": {
-      "gateway_connectivity": {
-        "name": "Connettività"
-      }
-    },
-    "sensor": {
-      "gateway_devices": {
-        "name": "Dispositivi configurati"
-      }
     }
   }
 }

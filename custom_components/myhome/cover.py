@@ -17,7 +17,7 @@ from homeassistant.const import (
     CONF_MAC,
 )
 
-from OWNd.message import (
+from .ownd.message import (
     OWNAutomationEvent,
     OWNAutomationCommand,
 )
@@ -328,6 +328,17 @@ class MyHOMECover(MyHOMEEntity, CoverEntity, RestoreEntity):
             return
 
         self._cancel_timer()
+
+        if self._advanced:
+            self._moving_to_target = True
+            self._attr_is_opening = target > current
+            self._attr_is_closing = target < current
+            self.async_write_ha_state()
+            await self._gateway_handler.send(
+                OWNAutomationCommand.set_shutter_level(self._full_where, target)
+            )
+            return
+
         self._moving_to_target = True
 
         if target > current:

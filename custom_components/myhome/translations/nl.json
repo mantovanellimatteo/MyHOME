@@ -55,24 +55,91 @@
   },
   "options": {
     "step": {
+      "decoders": {
+        "title": "Streaming Decoders (Dynamic Proxy)",
+        "description": "Configureer tot 4 fysieke mediaspelers (Echo Dot, Wiim, etc.) verbonden met de BTicino AUX-ingangen",
+        "data": {
+          "decoder_mode": "Streamer Routeringsmodus",
+          "decoder_1_entity": "Decoder Slot 1 (media_player)",
+          "decoder_1_source": "BTicino Bron Slot 1 (1-4)",
+          "decoder_1_pre_gain": "Pre-gain Slot 1 (anti-ruis offset 0-50%)",
+          "decoder_2_entity": "Decoder Slot 2 (media_player)",
+          "decoder_2_source": "BTicino Bron Slot 2 (1-4)",
+          "decoder_2_pre_gain": "Pre-gain Slot 2 (anti-ruis offset 0-50%)",
+          "decoder_3_entity": "Decoder Slot 3 (media_player)",
+          "decoder_3_source": "BTicino Bron Slot 3 (1-4)",
+          "decoder_3_pre_gain": "Pre-gain Slot 3 (anti-ruis offset 0-50%)",
+          "decoder_4_entity": "Decoder Slot 4 (media_player)",
+          "decoder_4_source": "BTicino Bron Slot 4 (1-4)",
+          "decoder_4_pre_gain": "Pre-gain Slot 4 (anti-ruis offset 0-50%)"
+        }
+      },
+      "radio": {
+        "title": "FM Radio Tuner (F500)",
+        "description": "Configureer FM-radiofrequentiecatalogus, regionale profielen en zenderlogo's",
+        "data": {
+          "radio_zone_profile": "Geografische Zone / Frequentieprofiel",
+          "radio_custom_frequencies": "Aangepaste Frequentiecatalogus (formaat: Frequentie: Zendernaam, één per regel)",
+          "radio_enable_logos": "Officiële zenderlogo's weergeven (lokale opslag)",
+          "radio_logos_path": "Webpad voor radiologo's (lokale URL, bijv. /local/loghi_radio)"
+        }
+      },
       "user": {
         "title": "MyHome opties",
-        "description": "Gevorderde systeem settings",
+        "description": "Geavanceerde systeeminstellingen",
         "data": {
-          "address": "IP address",
+          "address": "IP-adres",
           "password": "Wachtwoord",
-          "config_file_path": "Path onfiguratie bestand",
-          "command_worker_count": "Aantal open command sessies",
-          "generate_events": "Genereer gebeurtenissen in Home Assistant voor elk ontvangen bericht"
+          "config_file_path": "Pad naar configuratiebestand",
+          "command_worker_count": "Aantal gelijktijdige opdrachtsymmetries",
+          "generate_events": "Genereer gebeurtenissen in Home Assistant voor elk ontvangen bericht",
+          "enable_auto_learning": "Automatisch leren op de achtergrond inschakelen (ontdek nieuwe apparaten bij gebruik)"
         }
       }
     },
     "error": {
-      "invalid_ip": "Ongeldig IP address",
-      "invalid_worker_count": "Aantal workers moet tussen 1 and 10 zijn",
-      "invalid_config_path": "Ongeldig path voor configuratie bestand",
-      "invalid_password": "Ongeldig password",
-      "password_error": "Ongeldig password"
+      "invalid_ip": "Ongeldig IP-adres",
+      "invalid_worker_count": "Aantal workers moet tussen 1 en 10 zijn",
+      "invalid_config_path": "Ongeldig pad voor configuratiebestand",
+      "invalid_password": "Ongeldig wachtwoord",
+      "password_error": "Ongeldig wachtwoord",
+      "not_a_media_player": "Entiteit moet tot het domein media_player behoren",
+      "mass_entity_not_allowed": "Music Assistant entiteiten kunnen niet als decoders worden gebruikt"
+    },
+    "abort": {
+      "scan_completed": "Actieve scan voltooid! {count} nieuwe apparaten gevonden.",
+      "scan_failed": "Actieve scan mislukt. Controleer de logs voor meer details.",
+      "sniff_completed": "Passieve sniffing voltooid! {count} nieuwe apparaten gevonden.",
+      "sniff_failed": "Passieve sniffing mislukt. Controleer de logs voor meer details."
+    }
+  },
+  "selector": {
+    "menu_options": {
+      "options": {
+        "settings": "Gateway-instellingen configureren",
+        "decoders": "Streaming Decoders configureren (Dynamic Proxy)",
+        "radio": "FM Radio Tuner configureren (F500)",
+        "scan": "Actieve scan van de bus",
+        "sniff": "Passieve sniffing van de bus"
+      }
+    },
+    "decoder_mode": {
+      "options": {
+        "shared": "Gedeelde Bron (Multiroom / Gemeenschappelijke ingang)",
+        "exclusive": "Exclusieve Matrixkanalen (1 Streamer per Kamer)"
+      }
+    },
+    "radio_zone": {
+      "options": {
+        "piemonte_nord": "Noord-Piëmont (Turijn, Ivrea, Biella, Novara)",
+        "lombardia_milano": "Lombardije (Milaan en omgeving)",
+        "lazio_roma": "Lazio (Rome en omgeving)",
+        "veneto": "Veneto (Padua, Venetië, Verona)",
+        "emilia_romagna": "Emilia-Romagna (Bologna en omgeving)",
+        "toscana": "Toscane (Florence en omgeving)",
+        "campania_napoli": "Campanië (Napels en omgeving)",
+        "custom": "Aangepast (Alleen aangepaste frequenties gebruiken)"
+      }
     }
   },
   "services": {

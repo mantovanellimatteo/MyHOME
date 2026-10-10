@@ -4,73 +4,33 @@
     "flow_title": "MyHome {name} Gateway ({host})",
     "step": {
       "user": {
-        "title": "\ud83e\ude84 Connect your MyHOME Gateway",
-        "description": "\ud83e\ude84 **Zero-Knowledge Mode:** Your gateway is automatically discovered on your local network.\n\nToggle **NERD MODE \ud83e\udd13** if you wish to manually configure IP address, port, MAC address, and model.",
+        "title": "Pick your \"MyHome\" gateway",
         "data": {
-          "gateway_select": "\ud83c\udfe0 Discovered Gateway",
-          "nerd_mode": "\ud83e\udd13 NERD MODE (Manual configuration)"
-        },
-        "data_description": {
-          "gateway_select": "Select your MyHOME gateway discovered on your local network.",
-          "nerd_mode": "Enable this toggle if you wish to manually type all technical gateway parameters (IP, Port, MAC, Model)."
+          "host": "IP address"
         }
       },
       "port": {
-        "title": "\ud83d\udd0c Service Port",
-        "description": "Provide the service port for OpenWebNet communication with {name} ({host})",
+        "title": "Gateway's service port",
+        "description": "Provide the port used for OpenWebNet communication with the {name} gateway {host}",
         "data": {
-          "port": "\ud83d\udd0c Port"
+          "port": "Port"
         }
       },
       "password": {
-        "title": "\ud83d\udd11 Gateway Password",
-        "description": "Provide the OpenWebNet password for the gateway {name} ({host}).\n\n*(Leave default or enter password only if required by your gateway)*",
+        "title": "Gateway's password",
+        "description": "Provide the OpenWebNet password for the {name} gateway {host}",
         "data": {
-          "password": "\ud83d\udd11 Password"
+          "password": "Password"
         }
       },
       "custom": {
-        "title": "\ud83e\udd13 Manual Setup (Nerd Mode)",
-        "description": "You have full control over all OpenWebNet gateway parameters.",
+        "title": "Manual gateway entry",
+        "description": "Fill out the information for your gateway",
         "data": {
-          "address": "\ud83c\udf10 Gateway IP Address",
-          "port": "\ud83d\udd0c OpenWebNet Port",
-          "serialNumber": "\ud83c\udff7\ufe0f Gateway MAC Address",
-          "modelName": "\ud83d\udce6 Gateway Model Name"
-        },
-        "data_description": {
-          "address": "The local IPv4 address of your OpenWebNet gateway (e.g. 192.168.1.50).",
-          "port": "Standard OpenWebNet port (default is 20000).",
-          "serialNumber": "Hexadecimal hardware MAC address of the gateway.",
-          "modelName": "Gateway model identifier (e.g. F454, AM4890, MyHomeServer1)."
-        }
-      },
-      "nerd": {
-        "title": "\ud83e\udd13 Manual Setup (Nerd Mode)",
-        "description": "You have full control over all OpenWebNet gateway parameters.",
-        "data": {
-          "address": "\ud83c\udf10 Gateway IP Address",
-          "port": "\ud83d\udd0c OpenWebNet Port",
-          "serialNumber": "\ud83c\udff7\ufe0f Gateway MAC Address",
-          "modelName": "\ud83d\udce6 Gateway Model Name"
-        },
-        "data_description": {
-          "address": "The local IPv4 address of your OpenWebNet gateway (e.g. 192.168.1.50).",
-          "port": "Standard OpenWebNet port (default is 20000).",
-          "serialNumber": "Hexadecimal hardware MAC address of the gateway.",
-          "modelName": "Gateway model identifier (e.g. F454, AM4890, MyHomeServer1)."
-        }
-      },
-      "welcome": {
-        "title": "\ud83c\udf89 Welcome to MyHOME!",
-        "description": "\ud83c\udfe0 **Gateway successfully connected!**\n* **Model:** {name}\n* **Address:** {host}\n* **MAC:** {mac}\n\n---\n\ud83e\ude84 **Initial Device Setup:**\nChoose how you want to discover and populate devices from your system.\n\n\ud83d\udca1 **Passive Sniffing Note:**\nIf any devices (such as 4-button scenario modules, dry contacts, or wall pushbuttons) are not discovered during active scanning, you can add them at any time by enabling **Passive Bus Sniffing** from the integration's *Configure* menu: simply press physical buttons on your walls to capture and register them instantly!",
-        "data": {
-          "auto_scan": "\ud83d\udd0d AUTOMATIC SCS BUS SCAN",
-          "import_yaml": "\ud83d\udcc1 IMPORT FROM MYHOME.YAML"
-        },
-        "data_description": {
-          "auto_scan": "Actively queries the SCS bus to detect all responsive lights, covers, climate zones, and audio points.",
-          "import_yaml": "Imports all devices configured in your myhome.yaml file and automatically renames it to .old to prevent conflicts."
+          "address": "IP address",
+          "port": "Port",
+          "serialNumber": "MAC address",
+          "modelName": "Device type"
         }
       }
     },
@@ -80,9 +40,7 @@
       "invalid_mac": "Invalid MAC address",
       "invalid_password": "Invalid password",
       "password_retry": "Gateway refusing password negotiation, wait 60s before retrying.",
-      "password_error": "Invalid password",
-      "missing_ip": "Please enter an IP address or select a discovered gateway",
-      "no_gateway_found": "No gateway discovered on the network. Please toggle NERD MODE \ud83e\udd13 to configure manually."
+      "password_error": "Invalid password"
     },
     "abort": {
       "discover_timeout": "Unable to discover MyHome gateways",
@@ -93,16 +51,9 @@
       "already_configured": "This gateway is already configured",
       "already_in_progress": "The configuration of this gateway is already in progress",
       "reauth_successful": "Password change successful"
-    },
-    "progress": {
-      "scanning_bus": "Scanning SCS bus for lights, covers, and climate zones..."
     }
   },
   "options": {
-    "progress": {
-      "scanning_bus": "Scanning SCS bus for lights, covers, and climate zones...",
-      "sniffing_bus": "Listening to SCS bus for events... Press physical buttons on your walls to discover them!"
-    },
     "step": {
       "menu": {
         "title": "Select Action",
@@ -113,13 +64,48 @@
       },
       "scan_active": {
         "title": "Active Bus Scan",
-        "description": "This will scan all standard addresses on the SCS bus for lights, covers, and heating zones. It takes about 10-15 seconds. Do you want to start?"
+        "description": "This will perform a full scan of all addresses on the SCS bus for lights, covers, climate zones, and sound diffusion (amplifiers and F500 radio tuner). It takes about 25-35 seconds. Do you want to start?"
       },
       "sniff_passive": {
         "title": "Passive Bus Sniffing",
         "description": "This will listen to events on the bus. Walk around and press interrupters/buttons on the wall to discover them. Choose the listening duration below.",
         "data": {
           "duration": "Duration (seconds)"
+        }
+      },
+      "decoders": {
+        "title": "Streaming Decoder Configuration (Dynamic Proxy)",
+        "description": "Select the routing mode for network streamers (e.g. Echo Dot, Arylic, WiiM) connected to BTicino audio matrix AUX inputs.",
+        "data": {
+          "decoder_mode": "Streamer Routing Mode"
+        }
+      },
+      "decoders_slots": {
+        "title": "Streamer Inputs & Gain Configuration",
+        "description": "Map the streaming player entity to the corresponding BTicino AUX input and configure the anti-hiss pre-gain offset.",
+        "data": {
+          "decoder_1_entity": "Decoder Slot 1 (media_player)",
+          "decoder_1_source": "BTicino Source Slot 1 (1-4)",
+          "decoder_1_pre_gain": "Pre-gain Slot 1 (anti-hiss offset 0-50%)",
+          "decoder_2_entity": "Decoder Slot 2 (media_player)",
+          "decoder_2_source": "BTicino Source Slot 2 (1-4)",
+          "decoder_2_pre_gain": "Pre-gain Slot 2 (anti-hiss offset 0-50%)",
+          "decoder_3_entity": "Decoder Slot 3 (media_player)",
+          "decoder_3_source": "BTicino Source Slot 3 (1-4)",
+          "decoder_3_pre_gain": "Pre-gain Slot 3 (anti-hiss offset 0-50%)",
+          "decoder_4_entity": "Decoder Slot 4 (media_player)",
+          "decoder_4_source": "BTicino Source Slot 4 (1-4)",
+          "decoder_4_pre_gain": "Pre-gain Slot 4 (anti-hiss offset 0-50%)"
+        }
+      },
+      "radio": {
+        "title": "FM Radio Tuner (F500)",
+        "description": "Configure FM radio frequency catalog, regional profiles, and station logos",
+        "data": {
+          "radio_zone_profile": "Geographic Zone / Frequency Profile",
+          "radio_custom_frequencies": "Custom Frequency Catalog (format: Frequency: Station Name, one per line)",
+          "radio_enable_logos": "Display official station logos (local storage)",
+          "radio_logos_path": "Radio logos web path (local URL, e.g. /local/loghi_radio)"
         }
       },
       "user": {
@@ -133,10 +119,6 @@
           "generate_events": "Generate events in Home Assistant for each message received",
           "enable_auto_learning": "Enable background auto-learning (discover new devices as they are used)"
         }
-      },
-      "import_yaml": {
-        "title": "Import from YAML",
-        "description": "{summary}"
       }
     },
     "error": {
@@ -144,7 +126,9 @@
       "invalid_worker_count": "Workers must be between 1 and 10",
       "invalid_config_path": "Configuration file does not exist at this path",
       "invalid_password": "Invalid password",
-      "password_error": "Invalid password"
+      "password_error": "Invalid password",
+      "not_a_media_player": "Entity must be in the media_player domain",
+      "mass_entity_not_allowed": "Music Assistant entities cannot be used as decoders"
     },
     "abort": {
       "scan_completed": "Active scan completed! Found {count} new devices.",
@@ -157,9 +141,28 @@
     "menu_options": {
       "options": {
         "settings": "Configure Gateway Settings",
+        "decoders": "Configure Streaming Decoders (Dynamic Proxy)",
+        "radio": "Configure FM Radio Tuner (F500)",
         "scan": "Scan Bus for Devices (Active)",
-        "sniff": "Sniff Bus for Keypresses (Passive)",
-        "import_yaml": "Import configurations from myhome.yaml"
+        "sniff": "Sniff Bus for Keypresses (Passive)"
+      }
+    },
+    "decoder_mode": {
+      "options": {
+        "shared": "Shared Bus Source (Multiroom / Common Input)",
+        "exclusive": "Exclusive Matrix Channels (1 Streamer per Room)"
+      }
+    },
+    "radio_zone": {
+      "options": {
+        "piemonte_nord": "North Piedmont (Turin, Ivrea, Biella, Novara)",
+        "lombardia_milano": "Lombardy (Milan and surroundings)",
+        "lazio_roma": "Lazio (Rome and surroundings)",
+        "veneto": "Veneto (Padua, Venice, Verona)",
+        "emilia_romagna": "Emilia-Romagna (Bologna and surroundings)",
+        "toscana": "Tuscany (Florence and surroundings)",
+        "campania_napoli": "Campania (Naples and surroundings)",
+        "custom": "Custom (Use custom frequencies only)"
       }
     }
   },
@@ -206,18 +209,6 @@
   "device_automation": {
     "trigger_type": {
       "scenario_button_pressed": "Button {subtype} pressed"
-    }
-  },
-  "entity": {
-    "binary_sensor": {
-      "gateway_connectivity": {
-        "name": "Connectivity"
-      }
-    },
-    "sensor": {
-      "gateway_devices": {
-        "name": "Configured devices"
-      }
     }
   }
 }
