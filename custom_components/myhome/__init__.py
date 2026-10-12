@@ -13,6 +13,7 @@ from homeassistant.helpers import device_registry as dr, entity_registry as er, 
 from homeassistant.const import CONF_MAC
 from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
+from homeassistant.components import persistent_notification
 
 from .const import (
     ATTR_GATEWAY,
@@ -495,10 +496,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             await out_f.write(yaml.dump(yaml_data, default_flow_style=False))
             
         LOGGER.info("Export completed! Configured devices written to %s", full_path)
-        hass.components.persistent_notification.async_create(
+        persistent_notification.async_create(
             hass,
-            title="MyHOME Export",
             message=f"Configuration exported to `{output_file}`.",
+            title="MyHOME Export",
             notification_id="myhome_export"
         )
 
