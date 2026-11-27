@@ -13,6 +13,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 
 from .const import DOMAIN, LOGGER
+from .myhome_device import gateway_link
 
 KIND_CEN = "cen"
 KIND_CENPLUS = "cenplus"
@@ -78,7 +79,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         unique_id = _unique_id(mac, kind, address, button)
         entity = entities.get(unique_id)
         if entity is None:
-            entity = MyHOMEButtonEvent(mac, kind, address, button)
+            entity = MyHOMEButtonEvent(hass, mac, kind, address, button)
             entities[unique_id] = entity
             if add:
                 LOGGER.info(
@@ -114,7 +115,7 @@ class MyHOMEButtonEvent(EventEntity):
     _attr_has_entity_name = True
     _attr_should_poll = False
 
-    def __init__(self, mac: str, kind: str, address: str, button: int) -> None:
+    def __init__(self, hass, mac: str, kind: str, address: str, button: int) -> None:
         self._kind = kind
         self._address = address
         self._button = button
@@ -133,7 +134,7 @@ class MyHOMEButtonEvent(EventEntity):
                 name=f"Scenario Control {address}",
                 manufacturer="BTicino",
                 model="Scenario Module",
-                via_device=(DOMAIN, mac),
+                **gateway_link(hass, mac),
             )
         else:
             self._attr_device_info = DeviceInfo(
@@ -141,7 +142,7 @@ class MyHOMEButtonEvent(EventEntity):
                 name=f"{'CEN+' if kind == KIND_CENPLUS else 'CEN'} {address}",
                 manufacturer="BTicino S.p.A.",
                 model="CEN+ pushbutton" if kind == KIND_CENPLUS else "CEN pushbutton",
-                via_device=(DOMAIN, mac),
+                **gateway_link(hass, mac),
             )
 
         self._attr_extra_state_attributes = {"address": address, "button": button}

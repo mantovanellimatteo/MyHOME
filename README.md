@@ -9,9 +9,15 @@
 </p>
 
 # MyHOME (Modernized Fork)
-**Version: v1.6.0**
+**Version: v1.6.1**
 
 ## 🌟 Changelog
+* **v1.6.1**: **Renaming Entities Works Again & Cleaner Names!**
+  - **Fix – Renaming Entities**: Changing the entity ID of a MyHOME entity from the UI made it disappear until the next restart (`Error adding entity`), because devices were linked to the gateway with the deprecated `via_device`. They now use `via_device_id`, as required by recent Home Assistant versions; the old way is still used on older versions.
+  - **Fix – Duplicated Sensor Names**: Power and energy sensors no longer repeat the device name (`sensor.load_line_2_load_line_2_power` → `sensor.load_line_2_power`). Existing entity IDs are kept by Home Assistant; only new entities get the short names.
+  - **Fix – False Load Control Warnings**: The gateway echo of the instant power request (`*1200#1*`) is no longer logged as an unhandled load control frame.
+  - **Fix – Media Players in YAML**: `media_player` entries in `myhome.yaml` were rejected by the configuration schema; `who` defaults to `16`.
+  - **Modern Home Assistant Compatibility**: Removed the deprecated `CONNECTION_CLASS` from the config flow and the deprecated device registry lookups.
 * **v1.6.0**: **WHO 16 Speakers Learned from the Bus & Load Control Lines Power!**
   - **WHO 16 Sound System Speakers**: Amplifiers are now created automatically as `media_player` entities the first time they appear on the bus (e.g. when pressed from a wall control), even if no media player is configured: the platform was previously not loaded at all in that case. ON/OFF now use the WHO 16 amplifier frames `*16*3*WHERE##` / `*16*13*WHERE##` (previously `*16*1*` / `*16*0*`), and state is matched on the exact address (zone 1 no longer reacts to zone 11). Source frames (`*16*3*10S##`) no longer create bogus speakers.
   - **Load Control Lines**: Each load control actuator (WHO 18, `7N#0`) gets its own power sensor (`Load line N`). Actuators 1–12 are probed at startup and the ones that answer are created automatically, and kept across restarts; they also use the self-healing instant power broadcast. Lines can still be configured in `myhome.yaml` as `sensor` with `where: '7N'` and `class: power`.

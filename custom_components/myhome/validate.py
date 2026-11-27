@@ -432,9 +432,14 @@ climate_schema = MyHomeDeviceSchema(
 
 media_player_schema = MyHomeDeviceSchema(
     {
-        Required(CONF_WHERE): str,
-        Required(CONF_WHO): str,
-        Optional(CONF_NAME): str,
+        Required(str): {
+            Optional(CONF_WHO, default="16"): In(["16", "22"]),
+            Required(CONF_WHERE): Coerce(str),
+            Required(CONF_NAME): str,
+            Optional(CONF_ENTITY_NAME): str,
+            Optional(CONF_MANUFACTURER, default="BTicino S.p.A."): str,
+            Optional(CONF_DEVICE_MODEL): Coerce(str),
+        }
     }
 )
 

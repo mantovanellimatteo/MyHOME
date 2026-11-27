@@ -6,12 +6,32 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .gateway import MyHOMEGatewayHandler
 
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import Entity
 from homeassistant.const import CONF_ENTITIES
 
 
 from .const import DOMAIN, CONF_PLATFORMS, CONF_ENTITIES
+
+# HA 2026.8+ links child devices by device id: `via_device` is deprecated and
+# re-adding an entity that uses it (e.g. after renaming it) fails.
+_HAS_VIA_DEVICE_ID = "via_device_id" in DeviceInfo.__annotations__
+
+
+def gateway_link(hass, mac: str) -> dict:
+    """DeviceInfo / device registry kwargs linking a device to its gateway."""
+    if not _HAS_VIA_DEVICE_ID:
+        return {"via_device": (DOMAIN, mac)}
+    registry = dr.async_get(hass)
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        if hasattr(registry, "async_get_device_by_identifier"):
+            gateway = registry.async_get_device_by_identifier((DOMAIN, mac), entry.entry_id)
+        else:
+            gateway = registry.async_get_device(identifiers={(DOMAIN, mac)})
+        if gateway:
+            return {"via_device_id": gateway.id}
+    return {}
 
 
 class MyHOMEEntity(Entity):
@@ -46,7 +66,7 @@ class MyHOMEEntity(Entity):
             name=name,
             manufacturer=self._manufacturer,
             model=self._model,
-            via_device=(DOMAIN, self._gateway_handler.unique_id),
+            **gateway_link(hass, self._gateway_handler.unique_id),
         )
 
     async def async_added_to_hass(self):

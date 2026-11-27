@@ -69,7 +69,7 @@ from .const import (
     DOMAIN,
     LOGGER,
 )
-from .myhome_device import MyHOMEEntity
+from .myhome_device import MyHOMEEntity, gateway_link
 from .event import ADD_EVENT_ENTITY
 from .button import (
     DisableCommandButtonEntity,
@@ -428,7 +428,8 @@ class MyHOMEGatewayHandler:
                 add_line = self.hass.data[DOMAIN][self.mac].get("async_add_load_line")
                 if add_line is not None:
                     add_line(str(message.where))
-                if message.message_type is None:
+                if message.message_type is None and "*1200#" not in str(message):
+                    # (*1200#1* is the gateway echoing our own broadcast request)
                     # Actuator state frames are not decoded yet: keep them visible
                     # (rare, only on load control changes) so they can be mapped
                     LOGGER.warning(
@@ -690,7 +691,7 @@ class MyHOMEGatewayHandler:
                     name=f"Scenario Control {message.control_panel}",
                     manufacturer="BTicino",
                     model="Scenario Module",
-                    via_device=(DOMAIN, self.mac),
+                    **gateway_link(self.hass, self.mac),
                 )
 
             self._dispatch_button_event("scenario", message.control_panel, message.scenario, "pressed")

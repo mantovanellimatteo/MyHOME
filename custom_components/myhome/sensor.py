@@ -327,7 +327,7 @@ class MyHOMEPowerSensor(MyHOMEEntity, SensorEntity):
         )
 
         self._entity_specific_name = "Power"
-        self._attr_name = f"{name} {self._entity_specific_name}"
+        self._attr_name = self._entity_specific_name
 
         self._attr_device_class = device_class
         self._attr_unique_id = (
@@ -485,7 +485,7 @@ class MyHOMEEnergySensor(MyHOMEEntity, SensorEntity):
         elif self._entity_specific_id == "total-energy":
             self._entity_specific_name = "Energy"
             self._attr_entity_registry_enabled_default = True
-        self._attr_name = f"{name} {self._entity_specific_name}"
+        self._attr_name = self._entity_specific_name
 
         self._attr_unique_id = (
             f"{gateway.mac}-{self._device_id}-{self._entity_specific_id}"
@@ -604,7 +604,7 @@ class MyHOMETemperatureSensor(MyHOMEEntity, SensorEntity):
         )
 
         self._entity_specific_name = "Temperature"
-        self._attr_name = f"{name} {self._entity_specific_name}"
+        self._attr_name = self._entity_specific_name
 
         self._attr_device_class = device_class
         self._attr_unique_id = (
@@ -698,7 +698,7 @@ class MyHOMEIlluminanceSensor(MyHOMEEntity, SensorEntity):
         )
 
         self._entity_specific_name = "Illuminance"
-        self._attr_name = f"{name} {self._entity_specific_name}"
+        self._attr_name = self._entity_specific_name
 
         self._attr_device_class = device_class
         self._attr_unique_id = (
