@@ -1,12 +1,14 @@
 """ MyHOME integration. """
 
+import asyncio
 from pathlib import Path
 import aiofiles
 import yaml
 
 from OWNd.message import OWNCommand, OWNGatewayCommand
 
-from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntry
+from homeassistant.components import persistent_notification
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr, entity_registry as er, config_validation as cv
@@ -20,7 +22,6 @@ from .const import (
     CONF_PLATFORMS,
     CONF_ENTITY,
     CONF_ENTITIES,
-    CONF_GATEWAY,
     CONF_WORKER_COUNT,
     CONF_FILE_PATH,
     CONF_GENERATE_EVENTS,
@@ -34,7 +35,16 @@ from .validate import config_schema, format_mac
 from .gateway import MyHOMEGatewayHandler
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+GATEWAY_TEST_TIMEOUT = 30  # seconds
 PLATFORMS = ["light", "switch", "cover", "climate", "binary_sensor", "sensor", "media_player"]
+
+
+def _default_gateway(hass: HomeAssistant):
+    """MAC of the first loaded gateway (hass.data[DOMAIN] also holds internal flags)."""
+    for key, value in hass.data.get(DOMAIN, {}).items():
+        if isinstance(value, dict) and CONF_ENTITY in value:
+            return key
+    return None
 
 
 async def _async_register_frontend(hass: HomeAssistant):
@@ -172,35 +182,34 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         )
         LOGGER.warning("Migrating config entry unique_id to %s", entry.unique_id)
 
-    hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_ENTITY] = MyHOMEGatewayHandler(
+    _gateway_handler = MyHOMEGatewayHandler(
         hass=hass, config_entry=entry, generate_events=_generate_events
     )
+    _host = _gateway_handler.gateway.host
 
+    # If the gateway is offline (e.g. rebooting together with HA) raise
+    # ConfigEntryNotReady so that HA retries the setup later on its own.
     try:
-        tests_results = await hass.data[DOMAIN][entry.data[CONF_MAC]][
-            CONF_ENTITY
-        ].test()
-    except OSError as ose:
-        _gateway_handler = hass.data[DOMAIN].pop(CONF_GATEWAY)
-        _host = _gateway_handler.gateway.host
+        async with asyncio.timeout(GATEWAY_TEST_TIMEOUT):
+            tests_results = await _gateway_handler.test()
+    except (OSError, asyncio.TimeoutError) as err:
         raise ConfigEntryNotReady(
-            f"Gateway cannot be reached at {_host}, make sure its address is correct."
-        ) from ose
+            f"Gateway cannot be reached at {_host}: {err or 'timeout'}"
+        ) from err
+
+    if tests_results is None:
+        raise ConfigEntryNotReady(f"Gateway at {_host} refused the connection.")
 
     if not tests_results["Success"]:
-        if (
-            tests_results["Message"] == "password_error"
-            or tests_results["Message"] == "password_required"
-        ):
-            hass.async_create_task(
-                hass.config_entries.flow.async_init(
-                    DOMAIN,
-                    context={"source": SOURCE_REAUTH},
-                    data=entry.data,
-                )
-            )
-        del hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_ENTITY]
-        return False
+        if tests_results["Message"] in ("password_error", "password_required"):
+            entry.async_start_reauth(hass)
+            return False
+        # e.g. "password_retry": the gateway asks to wait before trying again
+        raise ConfigEntryNotReady(
+            f"Gateway at {_host} rejected the session ({tests_results['Message']})."
+        )
+
+    hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_ENTITY] = _gateway_handler
 
     _command_worker_count = (
         int(entry.options[CONF_WORKER_COUNT])
@@ -306,7 +315,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     async def handle_sync_time(call):
         gateway = call.data.get(ATTR_GATEWAY, None)
         if gateway is None:
-            gateway = list(hass.data[DOMAIN].keys())[0]
+            gateway = _default_gateway(hass)
         else:
             mac = format_mac(gateway)
             if mac is None:
@@ -335,7 +344,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         gateway = call.data.get(ATTR_GATEWAY, None)
         message = call.data.get(ATTR_MESSAGE, None)
         if gateway is None:
-            gateway = list(hass.data[DOMAIN].keys())[0]
+            gateway = _default_gateway(hass)
         else:
             mac = format_mac(gateway)
             if mac is None:
@@ -377,7 +386,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         output_file = call.data.get("output_file", "myhome_discovered.yaml")
         
         if gateway is None:
-            gateway = list(hass.data[DOMAIN].keys())[0]
+            gateway = _default_gateway(hass)
         else:
             mac = format_mac(gateway)
             if mac is None:
@@ -425,7 +434,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
                 await out_f.write(yaml.dump(yaml_data, default_flow_style=False))
                 
             LOGGER.info("Bus scan completed successfully! Discovered devices written to %s", full_path)
-            hass.components.persistent_notification.async_create(
+            persistent_notification.async_create(
                 hass,
                 title="MyHOME Bus Scan",
                 message=f"Bus scan completed! Discovered devices exported to `{output_file}`.",
@@ -442,7 +451,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         output_file = call.data.get("output_file", "myhome_exported.yaml")
         
         if gateway is None:
-            gateway = list(hass.data[DOMAIN].keys())[0]
+            gateway = _default_gateway(hass)
         else:
             mac = format_mac(gateway)
             if mac is None:
@@ -495,7 +504,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             await out_f.write(yaml.dump(yaml_data, default_flow_style=False))
             
         LOGGER.info("Export completed! Configured devices written to %s", full_path)
-        hass.components.persistent_notification.async_create(
+        persistent_notification.async_create(
             hass,
             title="MyHOME Export",
             message=f"Configuration exported to `{output_file}`.",
@@ -515,15 +524,18 @@ async def async_unload_entry(hass, entry):
     _platforms_to_unload = set(
         hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_PLATFORMS].keys()
     ) | {"binary_sensor", "sensor"}
-    for platform in _platforms_to_unload:
-        await hass.config_entries.async_forward_entry_unload(entry, platform)
+    unload_ok = await hass.config_entries.async_unload_platforms(
+        entry, _platforms_to_unload
+    )
 
-    hass.services.async_remove(DOMAIN, "sync_time")
-    hass.services.async_remove(DOMAIN, "send_message")
-    hass.services.async_remove(DOMAIN, "scan_bus")
-    hass.services.async_remove(DOMAIN, "export_to_yaml")
-
-    gateway_handler = hass.data[DOMAIN][entry.data[CONF_MAC]].pop(CONF_ENTITY)
+    gateway_handler = hass.data[DOMAIN][entry.data[CONF_MAC]].pop(CONF_ENTITY, None)
+    if gateway_handler is not None:
+        await gateway_handler.close_listener()
     del hass.data[DOMAIN][entry.data[CONF_MAC]]
 
-    return await gateway_handler.close_listener()
+    # Services are shared by all gateways: remove them only with the last one
+    if _default_gateway(hass) is None:
+        for service in ("sync_time", "send_message", "scan_bus", "export_to_yaml"):
+            hass.services.async_remove(DOMAIN, service)
+
+    return unload_ok

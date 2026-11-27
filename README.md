@@ -9,9 +9,17 @@
 </p>
 
 # MyHOME (Modernized Fork)
-**Version: v1.4.1**
+**Version: v1.4.2**
 
 ## 🌟 Changelog
+* **v1.4.2**: **Connection Robustness & Modern Home Assistant Compatibility!**
+  - **No More Leaked Gateway Sessions**: Unloading or reloading the integration (which auto-learning does for every new device) now really stops the listening and sending workers and closes their sockets. Previously each reload left a command session open, until the gateway refused new connections.
+  - **Automatic Retry When the Gateway Is Offline at Startup**: If the gateway is unreachable, times out (30 s) or refuses the session, the setup now raises `ConfigEntryNotReady` and Home Assistant retries on its own, instead of failing with a `KeyError`. Wrong passwords start the standard re-authentication flow.
+  - **One Bad Frame No Longer Drops the Bus**: Each received frame is processed in isolation; an error is logged and listening continues, instead of disconnecting and reconnecting the whole event session.
+  - **Persistent Notifications Fixed**: Replaced the removed `hass.components.persistent_notification` API, which crashed auto-learning (forcing a reconnect) and the `scan_bus` / `export_to_yaml` services.
+  - **Services Without `gateway`**: `sync_time`, `send_message`, `scan_bus` and `export_to_yaml` now default to the first loaded gateway (they used to pick an internal flag and fail with "Gateway not found"). Services are removed only when the last gateway is unloaded.
+  - **Diagnostic Frames (WHO 1001/1004)**: Fixed a missing import that silently skipped the status request for devices configured by `where` address.
+  - **Quieter Logs**: The `[BUS SNIFFER]` trace of every bus frame is now logged at DEBUG instead of WARNING.
 * **v1.4.1**: **Actuator Transient Echo Fix & Universal Virtual Positioning!**
   - **Actuator Transient Stop Echo Filter**: Fixed an issue where the initial ~80ms transient stop/switch frame emitted by BTicino actuators upon starting movement prematurely aborted the percentage timer, causing curtains to move all the way to 0% or 100%. The integration now maintains movement tracking and accurately stops at the requested target position.
   - **Universal Virtual Positioning**: Removed hardware bypass that attempted to send OpenWebNet level write frames (`*#2*WHERE*#11#...##`) when `advanced: True` was present in existing configurations. All covers now use the reliable virtual time-based positioning regardless of whether `advanced` is specified in `myhome.yaml`.
@@ -21,14 +29,13 @@
   - **State Restoration Across Reboots (`RestoreEntity`)**: Cover entities now remember their exact position and open/closed state across Home Assistant restarts and integration reloads.
   - **Configurable Travel Time**: Added per-device optional configuration (`travel_time`, `open_time`, `close_time`, defaulting to 25.0 seconds).
   - **Bidirectional Physical Wall Switch Sync**: When opening, closing, or stopping shutters from physical in-wall pushbuttons, Home Assistant tracks elapsed travel time and updates the position percentage and state in real time.
+<details>
+<summary><b>Previous versions changelog (Click to expand)</b></summary>
+
 * **v1.3.2**: **MHS1 Gateway Stability, OWNSignaling Fix & YAML Import Preservation!**
   - **`OWNSignaling` Crash Loop Fixed**: Fixed `AttributeError: 'OWNSignaling' object has no attribute '_who'` which caused a continuous 1-second crash/reconnect loop whenever protocol signaling frames (ACK, NACK, Nonce, handshake) arrived from gateways (particularly MyHomeServer1).
   - **MHS1 & Embedded Gateway Scan Reliability**: Increased response deadline to 200ms and inter-command spacing to 30ms to accommodate slower embedded gateways like MHS1 on physical 9600-baud SCS buses. Added automatic socket reconnection and recovery during active bus scans.
   - **YAML Metadata Preservation during Onboarding**: When both "Import YAML" and "Auto Scan" are enabled, existing YAML-imported devices (custom entity names, models, manufacturers) are preserved and never overwritten by generic scan names.
-
-<details>
-<summary><b>Previous versions changelog (Click to expand)</b></summary>
-
 * **v1.3.1**: **Critical Gateway Anti-Flooding Fix & Sound Diffusion Upgrades!**
   - **Eliminated Command Queue Flooding & Delay**: Fixed an issue where periodic actuator diagnostic frames (`WHO 1001` / `WHO 1004`) triggered an infinite storm of status queries on unconfigured hardware addresses, causing up to 2-minute delays on light switches.
   - **Entity Validation & 60s Throttling**: Diagnostic status queries now strictly verify that the target device exists in Home Assistant and rate-limit queries to a maximum of once every 60 seconds per device.
