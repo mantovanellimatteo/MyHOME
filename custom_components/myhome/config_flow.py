@@ -48,6 +48,7 @@ from OWNd.connection import OWNGateway, OWNSession
 from OWNd.discovery import find_gateways
 
 from .const import (
+    CONF_PLATFORMS,
     CONF_ADDRESS,
     CONF_DEVICE_TYPE,
     CONF_ENTITY,

@@ -166,7 +166,8 @@ class MyHOMEButtonEvent(EventEntity):
         self._fire(event_type)
 
     def _fire(self, event_type: str) -> None:
-        if self.hass is None:
+        # Before being added, an entity has no usable `hass` attribute
+        if getattr(self, "hass", None) is None or self.platform is None:
             # Entity just created and not yet added: fire once it is
             self._pending = event_type
             return

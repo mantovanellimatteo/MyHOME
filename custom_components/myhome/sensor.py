@@ -1,5 +1,7 @@
 """Support for MyHome sensors (power/energy, temperature, illuminance)."""
 
+import asyncio
+import re
 from datetime import timedelta
 
 from voluptuous import (
@@ -38,6 +40,7 @@ from OWNd.message import (
     MESSAGE_TYPE_ILLUMINANCE,
     MESSAGE_TYPE_MAIN_TEMPERATURE,
     MESSAGE_TYPE_SECONDARY_TEMPERATURE,
+    OWNCommand,
     OWNEnergyCommand,
     OWNEnergyEvent,
     OWNHeatingCommand,
@@ -63,6 +66,11 @@ from .myhome_device import MyHOMEEntity
 SCAN_INTERVAL = timedelta(seconds=60)
 
 SERVICE_SEND_INSTANT_POWER = "start_sending_instant_power"
+
+# Key under hass.data[DOMAIN][mac] with the callback creating load line sensors
+ADD_LOAD_LINE = "async_add_load_line"
+# Load control actuators probed at startup (where 71#0 .. 7N#0)
+LOAD_LINE_PROBE_COUNT = 12
 
 # Instant power broadcast: the meter sends active power for DURATION minutes
 POWER_BROADCAST_DURATION = 255
@@ -195,6 +203,77 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
                         gateway=hass.data[DOMAIN][config_entry.data[CONF_MAC]][CONF_ENTITY],
                     )
                 )
+
+    # --- Load control lines: WHO 18 actuators (7N#0), learned from the bus ---
+    _platforms = hass.data[DOMAIN][config_entry.data[CONF_MAC]][CONF_PLATFORMS]
+    _platforms.setdefault(PLATFORM, {})
+    _load_lines: dict[str, MyHOMEPowerSensor] = {}
+
+    def _get_or_create_load_line(where: str, add: bool = True):
+        """Power sensor of load control actuator `where` (e.g. "71"), created on first use."""
+        device_id = f"18-{where}"
+        if device_id in _load_lines:
+            return _load_lines[device_id]
+        if device_id in _platforms[PLATFORM]:
+            return None  # configured in YAML: handled by the regular sensors
+        name = f"Load line {where[1:]}"
+        _platforms[PLATFORM][device_id] = {
+            CONF_WHO: "18",
+            CONF_WHERE: where,
+            CONF_NAME: name,
+            CONF_DEVICE_CLASS: SensorDeviceClass.POWER,
+            CONF_ENTITIES: {},
+        }
+        entity = MyHOMEPowerSensor(
+            hass=hass,
+            device_id=device_id,
+            who="18",
+            where=where,
+            name=name,
+            device_class=SensorDeviceClass.POWER,
+            manufacturer="BTicino S.p.A.",
+            model="Load control actuator",
+            gateway=gateway,
+        )
+        _load_lines[device_id] = entity
+        if add:
+            LOGGER.info("%s Discovered load control line %s", gateway.log_id, where)
+            async_add_entities([entity])
+        return entity
+
+    # Recreate the lines found during previous runs
+    _line_uid = re.compile(rf"^{re.escape(gateway.mac)}-18-(7\d+)-{SensorDeviceClass.POWER}$")
+    _restored = []
+    for _entry in er.async_entries_for_config_entry(er.async_get(hass), config_entry.entry_id):
+        _match = _line_uid.match(_entry.unique_id or "") if _entry.domain == PLATFORM else None
+        if _match:
+            _line = _get_or_create_load_line(_match.group(1), add=False)
+            if _line is not None:
+                _restored.append(_line)
+    _sensors.extend(_restored)
+    hass.data[DOMAIN][config_entry.data[CONF_MAC]][ADD_LOAD_LINE] = _get_or_create_load_line
+
+    async def _probe_load_lines():
+        """Ask actuators 71#0..7N#0 for their power: the ones that answer get a sensor."""
+        for _ in range(60):
+            if gateway.is_connected:
+                break
+            await asyncio.sleep(1)
+        else:
+            return
+        await asyncio.sleep(5)
+        for n in range(1, LOAD_LINE_PROBE_COUNT + 1):
+            if f"18-7{n}" in _platforms[PLATFORM]:
+                continue
+            await gateway.send_status_request(OWNCommand.parse(f"*#18*7{n}#0*113##"))
+            await asyncio.sleep(0.3)
+
+    config_entry.async_create_background_task(
+        hass, _probe_load_lines(), "myhome_probe_load_lines"
+    )
+
+    # The service also works for discovered load lines
+    _power_devices_configured = True
 
     if _power_devices_configured:
         platform = entity_platform.current_platform.get()

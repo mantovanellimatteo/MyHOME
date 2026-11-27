@@ -9,12 +9,22 @@
 </p>
 
 # MyHOME (Modernized Fork)
-**Version: v1.5.0**
+**Version: v1.6.0**
 
 ## 🌟 Changelog
+* **v1.6.0**: **WHO 16 Speakers Learned from the Bus & Load Control Lines Power!**
+  - **WHO 16 Sound System Speakers**: Amplifiers are now created automatically as `media_player` entities the first time they appear on the bus (e.g. when pressed from a wall control), even if no media player is configured: the platform was previously not loaded at all in that case. ON/OFF now use the WHO 16 amplifier frames `*16*3*WHERE##` / `*16*13*WHERE##` (previously `*16*1*` / `*16*0*`), and state is matched on the exact address (zone 1 no longer reacts to zone 11). Source frames (`*16*3*10S##`) no longer create bogus speakers.
+  - **Load Control Lines**: Each load control actuator (WHO 18, `7N#0`) gets its own power sensor (`Load line N`). Actuators 1–12 are probed at startup and the ones that answer are created automatically, and kept across restarts; they also use the self-healing instant power broadcast. Lines can still be configured in `myhome.yaml` as `sensor` with `where: '7N'` and `class: power`.
+  - **Load Control State Frames**: Frames from the actuators other than power/energy (e.g. a line disconnected by the load control central) are now logged as `[LOAD CONTROL] Unhandled frame ...` warnings, so they can be mapped to line states.
+  - **Fix – CEN Event Entities**: CEN pushbutton event entities (v1.5.0) never received presses because of wrong event names; they now fire `short_press` / `short_release` / `long_press` / `long_release`.
+  - **Fix – Import YAML**: The "Import YAML" step of the onboarding and options flows failed with `NameError: CONF_PLATFORMS`.
+  - **Fix – Auto-learned Devices Saved**: Devices learned from the bus are now really persisted in the integration options (the options dictionary was modified in place, so Home Assistant saw no change).
 * **v1.5.0**: **Pushbuttons & Scenarios as Event Entities, Self-Healing Instant Power!**
   - **CEN / CEN+ / Scenario Event Entities**: Every physical pushbutton and scenario is now a native Home Assistant `event` entity, created automatically the first time it is pressed (no YAML needed) and kept across restarts. Use them directly as automation triggers from the UI, with history and logbook. Existing `myhome_cen_event`, `myhome_cenplus_event`, `myhome_scenario_event` bus events and device triggers keep working unchanged.
   - **Self-Healing Instant Power**: The power sensor now re-requests the instant power broadcast right after every reconnection to the gateway and whenever no reading arrives for 10 minutes, on top of the periodic renewal. Automations that periodically call `myhome.start_sending_instant_power` are no longer needed. The service `duration` is now optional (defaults to 255 minutes).
+<details>
+<summary><b>Previous versions changelog (Click to expand)</b></summary>
+
 * **v1.4.2**: **Connection Robustness & Modern Home Assistant Compatibility!**
   - **No More Leaked Gateway Sessions**: Unloading or reloading the integration (which auto-learning does for every new device) now really stops the listening and sending workers and closes their sockets. Previously each reload left a command session open, until the gateway refused new connections.
   - **Automatic Retry When the Gateway Is Offline at Startup**: If the gateway is unreachable, times out (30 s) or refuses the session, the setup now raises `ConfigEntryNotReady` and Home Assistant retries on its own, instead of failing with a `KeyError`. Wrong passwords start the standard re-authentication flow.
@@ -26,9 +36,6 @@
 * **v1.4.1**: **Actuator Transient Echo Fix & Universal Virtual Positioning!**
   - **Actuator Transient Stop Echo Filter**: Fixed an issue where the initial ~80ms transient stop/switch frame emitted by BTicino actuators upon starting movement prematurely aborted the percentage timer, causing curtains to move all the way to 0% or 100%. The integration now maintains movement tracking and accurately stops at the requested target position.
   - **Universal Virtual Positioning**: Removed hardware bypass that attempted to send OpenWebNet level write frames (`*#2*WHERE*#11#...##`) when `advanced: True` was present in existing configurations. All covers now use the reliable virtual time-based positioning regardless of whether `advanced` is specified in `myhome.yaml`.
-<details>
-<summary><b>Previous versions changelog (Click to expand)</b></summary>
-
 * **v1.4.0**: **Native Shutter Percentage Control & "Unknown" State Elimination!**
   - **Virtual Time-Based Positioning (`SET_POSITION`)**: Full native support for cover percentage control (0% to 100%) on standard BTicino shutter actuators (`F411/2`, `F411/4`, `3476`, etc.). Home Assistant now displays an interactive percentage slider and preset buttons (0%, 25%, 50%, 75%, 100%) for all shutters.
   - **Permanently Eliminated "Unknown" ("Sconosciuto") State**: Fixed a fundamental issue where standard BTicino stop frames (`*2*0*WHERE##`) caused Home Assistant to revert cover entities to "Unknown". Covers now accurately retain and reflect their state (`open`, `closed`, `opening`, `closing`) at all times.
@@ -123,8 +130,13 @@ This is a fork of the original `anotherjulien/MyHOME` integration, updated with 
 
 ## Key Features
 
-### 🎵 Sound Diffusion (WHO 22) Support
+### 🎵 Sound Diffusion (WHO 16 / WHO 22) Support
+WHO 16 amplifiers (address "room + point", e.g. `11`) are created as `media_player` entities the first time they show up on the bus, e.g. after turning them on once from a wall control; ON/OFF send `*16*3*WHERE##` / `*16*13*WHERE##`.
+
 Includes active and passive discovery of sound diffusion zones on your SCS bus, automatically registering them as `media_player` entities in Home Assistant. This allows you to turn fonic points, audio sources, and speaker zones ON and OFF directly from your dashboards and automations.
+
+### ⚡ Load Control Lines (New in v1.6.0)
+Every load control actuator (WHO 18, address `7N#0`) gets a `Load line N` power sensor, so besides the total house consumption you can see what each controlled line draws. Actuators 1–12 are probed at startup and created automatically when they answer. Frames about the line state are logged as `[LOAD CONTROL]` warnings, to be decoded in a future version.
 
 ### 🔌 Robust Connection Recovery
 The connection listener and command sessions are now wrapped in resilient supervisors with **exponential backoff reconnection**. If the gateway drops the connection due to network issues or session limits, the integration automatically reconnects without requiring a Home Assistant reboot or manual integration reload.

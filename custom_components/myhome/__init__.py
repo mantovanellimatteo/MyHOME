@@ -36,6 +36,9 @@ from .gateway import MyHOMEGatewayHandler
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 GATEWAY_TEST_TIMEOUT = 30  # seconds
+# Platforms that also create entities learned from the bus, so they must be
+# loaded even when nothing of that kind is configured yet
+ALWAYS_LOADED_PLATFORMS = {"binary_sensor", "sensor", "event", "media_player"}
 PLATFORMS = ["light", "switch", "cover", "climate", "binary_sensor", "sensor", "media_player", "event"]
 
 
@@ -234,7 +237,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     _platforms_to_setup = set(
         hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_PLATFORMS].keys()
-    ) | {"binary_sensor", "sensor", "event"}
+    ) | ALWAYS_LOADED_PLATFORMS
     await hass.config_entries.async_forward_entry_setups(
         entry, _platforms_to_setup
     )
@@ -522,12 +525,13 @@ async def async_unload_entry(hass, entry):
 
     LOGGER.info("Unloading MyHome entry.")
 
-    # Stop the gateway from creating event entities while platforms unload
-    hass.data[DOMAIN][entry.data[CONF_MAC]].pop("async_add_event_entity", None)
+    # Stop the gateway from creating entities on the fly while platforms unload
+    for _key in ("async_add_event_entity", "async_add_load_line", "async_add_media_player"):
+        hass.data[DOMAIN][entry.data[CONF_MAC]].pop(_key, None)
 
     _platforms_to_unload = set(
         hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_PLATFORMS].keys()
-    ) | {"binary_sensor", "sensor", "event"}
+    ) | ALWAYS_LOADED_PLATFORMS
     unload_ok = await hass.config_entries.async_unload_platforms(
         entry, _platforms_to_unload
     )

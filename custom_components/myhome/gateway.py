@@ -1,5 +1,6 @@
 """Code to handle a MyHome Gateway."""
 import asyncio
+import copy
 from datetime import datetime, timezone
 from typing import Callable, Dict, List, Optional
 
@@ -300,7 +301,12 @@ class MyHOMEGatewayHandler:
                         where_raw = clean[2] if message.startswith("*#") else (clean[3] if len(clean) > 3 else clean[2])
 
                     # Riconosci speaker fisici: '3#...' per WHO 22 o numerico per WHO 16
-                    if where_raw and (where_raw.startswith("3#") or (who_raw == "16" and where_raw.isdigit())):
+                    # WHO 16 amplifiers are "room+point" (11..99); 10S are sources
+                    is_who16_amplifier = (
+                        who_raw == "16" and len(where_raw or "") == 2
+                        and where_raw.isdigit() and "0" not in where_raw
+                    )
+                    if where_raw and (where_raw.startswith("3#") or is_who16_amplifier):
                         dev_id = f"{who_raw}-{where_raw}"
 
                         # 1. Creazione dinamica immediata a runtime (Zero YAML / Zero reload!)
@@ -311,7 +317,7 @@ class MyHOMEGatewayHandler:
                                 created_entity.handle_event(message)
 
                         # 2. Persistenza nelle opzioni di configurazione per i riavvii successivi
-                        new_options = dict(self.config_entry.options)
+                        new_options = copy.deepcopy(dict(self.config_entry.options))
                         devices = new_options.get("devices", {})
                         if "media_player" not in devices:
                             devices["media_player"] = {}
@@ -395,7 +401,7 @@ class MyHOMEGatewayHandler:
                     or dev_id not in self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS][platform]
                 ):
                     LOGGER.info("Auto-learning discovered new device: %s (%s)", dev_id, platform)
-                    new_options = dict(self.config_entry.options)
+                    new_options = copy.deepcopy(dict(self.config_entry.options))
                     devices = new_options.get("devices", {})
                     if platform not in devices:
                         devices[platform] = {}
@@ -417,6 +423,20 @@ class MyHOMEGatewayHandler:
                         )
 
         if isinstance(message, OWNEnergyEvent):
+            if str(message.where).startswith("7"):
+                # Load control actuator (7N#0): create its line sensor on first contact
+                add_line = self.hass.data[DOMAIN][self.mac].get("async_add_load_line")
+                if add_line is not None:
+                    add_line(str(message.where))
+                if message.message_type is None:
+                    # Actuator state frames are not decoded yet: keep them visible
+                    # (rare, only on load control changes) so they can be mapped
+                    LOGGER.warning(
+                        "%s [LOAD CONTROL] Unhandled frame from load line %s: `%s`",
+                        self.log_id,
+                        message.where,
+                        message,
+                    )
             if SENSOR in self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS] and message.entity in self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS][SENSOR]:
                 for _entity in self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS][SENSOR][message.entity][CONF_ENTITIES]:
                     if isinstance(
@@ -629,7 +649,17 @@ class MyHOMEGatewayHandler:
                 event = CONF_LONG_RELEASE
             else:
                 event = None
-            self._dispatch_button_event("cen", message.object, message.push_button, event)
+            self._dispatch_button_event(
+                "cen",
+                message.object,
+                message.push_button,
+                {
+                    CONF_SHORT_PRESS: "short_press",
+                    CONF_SHORT_RELEASE: "short_release",
+                    CONF_LONG_PRESS: "long_press",
+                    CONF_LONG_RELEASE: "long_release",
+                }.get(event),
+            )
             self.hass.bus.async_fire(
                 "myhome_cen_event",
                 {

@@ -128,9 +128,11 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         await asyncio.sleep(4)
         gateway = hass.data[DOMAIN][config_entry.data[CONF_MAC]][CONF_ENTITY]
         try:
-            cmd = OWNCommand.parse(f"*#22*{TUNER_WHERE}*6##")
-            if cmd:
-                await gateway.send(cmd)
+            # Ask the WHO 22 tuner only if there is a WHO 22 zone on this bus
+            if any(player._who == "22" for player in _media_players):
+                cmd = OWNCommand.parse(f"*#22*{TUNER_WHERE}*6##")
+                if cmd:
+                    await gateway.send(cmd)
             for player in _media_players:
                 await asyncio.sleep(0.2)
                 if player._who == "22":
@@ -325,7 +327,8 @@ class MyHOMEMediaPlayer(MyHOMEEntity, MediaPlayerEntity, RestoreEntity):
             await self._send_own_command(f"*22*22#4#{src_id}*{self._where}##")
             await self._send_own_command(f"*22*22#4#{src_id}*5#{self._where}##")
         else:
-            cmd_str = f"*16*1*{self._where}##"
+            # WHO 16 amplifiers: *16*3*WHERE## is ON, *16*13*WHERE## is OFF
+            cmd_str = f"*16*3*{self._where}##"
             await self._send_own_command(cmd_str)
         self._state = MediaPlayerState.PLAYING
         if src_id not in ["4", "7"] and self._source:
@@ -339,7 +342,7 @@ class MyHOMEMediaPlayer(MyHOMEEntity, MediaPlayerEntity, RestoreEntity):
         if self._who == "22":
             cmd_str = f"*22*0#4#0*{self._where}##"
         else:
-            cmd_str = f"*16*0*{self._where}##"
+            cmd_str = f"*16*13*{self._where}##"
         await self._send_own_command(cmd_str)
         self._state = MediaPlayerState.OFF
         self.async_write_ha_state()
@@ -555,6 +558,20 @@ class MyHOMEMediaPlayer(MyHOMEEntity, MediaPlayerEntity, RestoreEntity):
                             self.async_write_ha_state()
             except Exception as ex:
                 LOGGER.debug("Error parsing preset %s: %s", msg_str, ex)
+
+        # 3a. WHO 16 amplifier power frames, matched exactly so that e.g. zone 1
+        # never reacts to zone 11: ON = *16*3* / *16*0*, OFF = *16*13* / *16*10*
+        if self._who == "16":
+            frame = msg_str.strip()
+            if frame in (f"*16*3*{self._where}##", f"*16*0*{self._where}##"):
+                self._state = MediaPlayerState.PLAYING
+                self._refresh_media_title()
+                self.async_write_ha_state()
+                return
+            if frame in (f"*16*13*{self._where}##", f"*16*10*{self._where}##"):
+                self._state = MediaPlayerState.OFF
+                self.async_write_ha_state()
+                return
 
         # 3. Messages destined for this room's amplifier
         if self._where in msg_str or self._full_where in msg_str:
