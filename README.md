@@ -9,9 +9,12 @@
 </p>
 
 # MyHOME (Modernized Fork)
-**Version: v1.4.2**
+**Version: v1.5.0**
 
 ## 🌟 Changelog
+* **v1.5.0**: **Pushbuttons & Scenarios as Event Entities, Self-Healing Instant Power!**
+  - **CEN / CEN+ / Scenario Event Entities**: Every physical pushbutton and scenario is now a native Home Assistant `event` entity, created automatically the first time it is pressed (no YAML needed) and kept across restarts. Use them directly as automation triggers from the UI, with history and logbook. Existing `myhome_cen_event`, `myhome_cenplus_event`, `myhome_scenario_event` bus events and device triggers keep working unchanged.
+  - **Self-Healing Instant Power**: The power sensor now re-requests the instant power broadcast right after every reconnection to the gateway and whenever no reading arrives for 10 minutes, on top of the periodic renewal. Automations that periodically call `myhome.start_sending_instant_power` are no longer needed. The service `duration` is now optional (defaults to 255 minutes).
 * **v1.4.2**: **Connection Robustness & Modern Home Assistant Compatibility!**
   - **No More Leaked Gateway Sessions**: Unloading or reloading the integration (which auto-learning does for every new device) now really stops the listening and sending workers and closes their sockets. Previously each reload left a command session open, until the gateway refused new connections.
   - **Automatic Retry When the Gateway Is Offline at Startup**: If the gateway is unreachable, times out (30 s) or refuses the session, the setup now raises `ConfigEntryNotReady` and Home Assistant retries on its own, instead of failing with a `KeyError`. Wrong passwords start the standard re-authentication flow.
@@ -23,15 +26,15 @@
 * **v1.4.1**: **Actuator Transient Echo Fix & Universal Virtual Positioning!**
   - **Actuator Transient Stop Echo Filter**: Fixed an issue where the initial ~80ms transient stop/switch frame emitted by BTicino actuators upon starting movement prematurely aborted the percentage timer, causing curtains to move all the way to 0% or 100%. The integration now maintains movement tracking and accurately stops at the requested target position.
   - **Universal Virtual Positioning**: Removed hardware bypass that attempted to send OpenWebNet level write frames (`*#2*WHERE*#11#...##`) when `advanced: True` was present in existing configurations. All covers now use the reliable virtual time-based positioning regardless of whether `advanced` is specified in `myhome.yaml`.
+<details>
+<summary><b>Previous versions changelog (Click to expand)</b></summary>
+
 * **v1.4.0**: **Native Shutter Percentage Control & "Unknown" State Elimination!**
   - **Virtual Time-Based Positioning (`SET_POSITION`)**: Full native support for cover percentage control (0% to 100%) on standard BTicino shutter actuators (`F411/2`, `F411/4`, `3476`, etc.). Home Assistant now displays an interactive percentage slider and preset buttons (0%, 25%, 50%, 75%, 100%) for all shutters.
   - **Permanently Eliminated "Unknown" ("Sconosciuto") State**: Fixed a fundamental issue where standard BTicino stop frames (`*2*0*WHERE##`) caused Home Assistant to revert cover entities to "Unknown". Covers now accurately retain and reflect their state (`open`, `closed`, `opening`, `closing`) at all times.
   - **State Restoration Across Reboots (`RestoreEntity`)**: Cover entities now remember their exact position and open/closed state across Home Assistant restarts and integration reloads.
   - **Configurable Travel Time**: Added per-device optional configuration (`travel_time`, `open_time`, `close_time`, defaulting to 25.0 seconds).
   - **Bidirectional Physical Wall Switch Sync**: When opening, closing, or stopping shutters from physical in-wall pushbuttons, Home Assistant tracks elapsed travel time and updates the position percentage and state in real time.
-<details>
-<summary><b>Previous versions changelog (Click to expand)</b></summary>
-
 * **v1.3.2**: **MHS1 Gateway Stability, OWNSignaling Fix & YAML Import Preservation!**
   - **`OWNSignaling` Crash Loop Fixed**: Fixed `AttributeError: 'OWNSignaling' object has no attribute '_who'` which caused a continuous 1-second crash/reconnect loop whenever protocol signaling frames (ACK, NACK, Nonce, handshake) arrived from gateways (particularly MyHomeServer1).
   - **MHS1 & Embedded Gateway Scan Reliability**: Increased response deadline to 200ms and inter-command spacing to 30ms to accommodate slower embedded gateways like MHS1 on physical 9600-baud SCS buses. Added automatic socket reconnection and recovery during active bus scans.
@@ -146,6 +149,21 @@ If you don't know your addresses, you can sniff them passively:
 Easily move between UI and YAML configurations using built-in services:
 - `myhome.scan_bus`: Scans the bus and exports discovered devices to `myhome_discovered.yaml`.
 - `myhome.export_to_yaml`: Exports all your UI-configured devices to `myhome_exported.yaml` for backup or manual editing.
+
+### 🔘 Pushbuttons & Scenarios as Event Entities (New in v1.5.0)
+Every CEN / CEN+ pushbutton and every scenario of a scenario module becomes a native **`event` entity**, created automatically the first time it is used on the bus:
+- **CEN**: device `CEN <object>`, one entity per button (`Button 1`, `Button 2`, ...), event types `short_press`, `short_release`, `long_press`, `long_release`.
+- **CEN+**: device `CEN+ <object>`, event types `short_press`, `long_press`, `long_release` and the rotations `rotate_cw_slow`, `rotate_cw_fast`, `rotate_ccw_slow`, `rotate_ccw_fast`.
+- **Scenarios**: one entity per scenario (`Scenario 1`, ...) on the `Scenario Control <address>` device, event type `pressed`.
+
+A held button reports `long_press` once, not on every repeated frame. In an automation pick the entity with a **State** trigger, or use the `event_type` attribute:
+```yaml
+triggers:
+  - trigger: state
+    entity_id: event.cen_21_button_3
+    attribute: event_type
+    to: short_release
+```
 
 ### 🎛️ Scenario Control Integration (New in v0.2.0)
 You can now use your physical Bticino Scenario Modules (such as the 4-button wall plates) to trigger automations directly in Home Assistant without physically reconfiguring them as CEN/CEN+ modules!

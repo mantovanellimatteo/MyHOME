@@ -218,6 +218,47 @@
       "gateway_devices": {
         "name": "Configured devices"
       }
+    },
+    "event": {
+      "cen_button": {
+        "name": "Button {button}",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "short_press": "Short press",
+              "short_release": "Short release",
+              "long_press": "Long press",
+              "long_release": "Long release"
+            }
+          }
+        }
+      },
+      "cenplus_button": {
+        "name": "Button {button}",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "short_press": "Short press",
+              "long_press": "Long press",
+              "long_release": "Long release",
+              "rotate_cw_slow": "Rotated clockwise (slow)",
+              "rotate_cw_fast": "Rotated clockwise (fast)",
+              "rotate_ccw_slow": "Rotated counter-clockwise (slow)",
+              "rotate_ccw_fast": "Rotated counter-clockwise (fast)"
+            }
+          }
+        }
+      },
+      "scenario_button": {
+        "name": "Scenario {button}",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "pressed": "Launched"
+            }
+          }
+        }
+      }
     }
   }
 }

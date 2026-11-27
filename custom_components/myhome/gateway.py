@@ -69,6 +69,7 @@ from .const import (
     LOGGER,
 )
 from .myhome_device import MyHOMEEntity
+from .event import ADD_EVENT_ENTITY
 from .button import (
     DisableCommandButtonEntity,
     EnableCommandButtonEntity,
@@ -252,6 +253,19 @@ class MyHOMEGatewayHandler:
             self.is_connected = False
             self._notify_connection_change()
         LOGGER.debug("%s Destroying listening worker.", self.log_id)
+
+    def _dispatch_button_event(self, kind: str, address, button, event_type) -> None:
+        """Forward a CEN / CEN+ / scenario press to its event entity (created on first use)."""
+        if event_type is None:
+            return
+        add_fn = self.hass.data[DOMAIN].get(self.mac, {}).get(ADD_EVENT_ENTITY)
+        if add_fn is None:
+            return
+        try:
+            entity = add_fn(kind, str(address), int(button))
+            entity.handle_button(event_type)
+        except Exception as err:  # never let an entity problem affect the bus
+            LOGGER.debug("%s Could not dispatch %s event: %s", self.log_id, kind, err)
 
     async def _handle_message(self, message) -> None:
         """Process a single frame received on the event bus."""
@@ -573,6 +587,23 @@ class MyHOMEGatewayHandler:
                 event = CONF_LONG_RELEASE
             else:
                 event = None
+            if message.is_short_pressed:
+                button_event = "short_press"
+            elif message.is_held or message.is_still_held:
+                button_event = "long_press"
+            elif message.is_released:
+                button_event = "long_release"
+            elif message.is_slowly_turned_cw:
+                button_event = "rotate_cw_slow"
+            elif message.is_quickly_turned_cw:
+                button_event = "rotate_cw_fast"
+            elif message.is_slowly_turned_ccw:
+                button_event = "rotate_ccw_slow"
+            elif message.is_quickly_turned_ccw:
+                button_event = "rotate_ccw_fast"
+            else:
+                button_event = None
+            self._dispatch_button_event("cenplus", message.object, message.push_button, button_event)
             self.hass.bus.async_fire(
                 "myhome_cenplus_event",
                 {
@@ -598,6 +629,7 @@ class MyHOMEGatewayHandler:
                 event = CONF_LONG_RELEASE
             else:
                 event = None
+            self._dispatch_button_event("cen", message.object, message.push_button, event)
             self.hass.bus.async_fire(
                 "myhome_cen_event",
                 {
@@ -631,6 +663,7 @@ class MyHOMEGatewayHandler:
                     via_device=(DOMAIN, self.mac),
                 )
 
+            self._dispatch_button_event("scenario", message.control_panel, message.scenario, "pressed")
             self.hass.bus.async_fire(
                 "myhome_scenario_event",
                 {

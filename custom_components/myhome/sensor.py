@@ -64,6 +64,12 @@ SCAN_INTERVAL = timedelta(seconds=60)
 
 SERVICE_SEND_INSTANT_POWER = "start_sending_instant_power"
 
+# Instant power broadcast: the meter sends active power for DURATION minutes
+POWER_BROADCAST_DURATION = 255
+POWER_RENEW_AFTER = timedelta(minutes=55)
+POWER_STALE_AFTER = timedelta(minutes=10)
+POWER_WATCHDOG_INTERVAL = timedelta(minutes=5)
+
 ATTR_DURATION = "duration"
 ATTR_DATE = "date"
 ATTR_MONTH = "month"
@@ -261,29 +267,71 @@ class MyHOMEPowerSensor(MyHOMEEntity, SensorEntity):
         self._hass.data[DOMAIN][self._gateway_handler.mac][CONF_PLATFORMS][
             self._platform
         ][self._device_id][CONF_ENTITIES][self._attr_device_class] = self
-        
+
+        self._last_power_frame: float | None = None
+        self._last_power_request: float | None = None
+
         # Start sending instant power immediately
-        await self.start_sending_instant_power(255)
-        
-        # Renew the instant power broadcast every 55 minutes
+        await self.start_sending_instant_power(POWER_BROADCAST_DURATION)
+
+        # Watchdog: renew the broadcast before it expires and re-request it
+        # when the meter goes silent, so no external automation is needed.
         self._unsub_power_renewal = async_track_time_interval(
             self._hass,
-            self._renew_instant_power,
-            timedelta(minutes=55)
+            self._async_power_watchdog,
+            POWER_WATCHDOG_INTERVAL,
         )
-        
+        # The meter forgets the request when the bus or gateway restarts:
+        # ask again as soon as the event session is re-established.
+        self._gateway_handler.register_connection_callback(self._on_connection_change)
+
         await self.async_update()
 
-    async def _renew_instant_power(self, now=None):
-        """Renew the continuous broadcast of instant power from the meter."""
-        LOGGER.debug("Renewing instant power broadcast for %s", self.entity_id)
-        await self.start_sending_instant_power(255)
+    def _on_connection_change(self) -> None:
+        """Re-request the broadcast after every (re)connection to the gateway."""
+        recently_requested = (
+            self._last_power_request is not None
+            and self._hass.loop.time() - self._last_power_request < 30
+        )
+        if self._gateway_handler.is_connected and not recently_requested:
+            self._hass.async_create_task(
+                self.start_sending_instant_power(POWER_BROADCAST_DURATION)
+            )
+
+    async def _async_power_watchdog(self, now=None):
+        """Renew the broadcast periodically, or sooner if no frame arrives."""
+        if not self._gateway_handler.is_connected:
+            return
+        loop_now = self._hass.loop.time()
+        since_request = (
+            loop_now - self._last_power_request
+            if self._last_power_request is not None
+            else None
+        )
+        if since_request is None or since_request >= POWER_RENEW_AFTER.total_seconds():
+            LOGGER.debug("Renewing instant power broadcast for %s", self.entity_id)
+            await self.start_sending_instant_power(POWER_BROADCAST_DURATION)
+            return
+        last_data = self._last_power_frame or self._last_power_request
+        if (
+            loop_now - last_data >= POWER_STALE_AFTER.total_seconds()
+            and since_request >= POWER_STALE_AFTER.total_seconds()
+        ):
+            LOGGER.info(
+                "%s No instant power received for %s for %d minutes, requesting it again",
+                self._gateway_handler.log_id,
+                self.entity_id,
+                (loop_now - last_data) // 60,
+            )
+            await self.start_sending_instant_power(POWER_BROADCAST_DURATION)
 
     async def async_will_remove_from_hass(self):
         """When entity is removed from hass."""
-        if hasattr(self, "_unsub_power_renewal") and self._unsub_power_renewal:
+        if getattr(self, "_unsub_power_renewal", None):
             self._unsub_power_renewal()
-            
+            self._unsub_power_renewal = None
+        self._gateway_handler.unregister_connection_callback(self._on_connection_change)
+
         if (
             self._attr_device_class
             in self._hass.data[DOMAIN][self._gateway_handler.mac][CONF_PLATFORMS][
@@ -299,23 +347,24 @@ class MyHOMEPowerSensor(MyHOMEEntity, SensorEntity):
 
         Only used by the generic entity update service.
         """
-        # await self.start_sending_instant_power(255)
 
     def handle_event(self, message: OWNEnergyEvent):
         """Handle an event message."""
         if message.message_type not in [MESSAGE_TYPE_ACTIVE_POWER]:
             return True
 
-        LOGGER.info(
+        LOGGER.debug(
             "%s %s",
             self._gateway_handler.log_id,
             message.human_readable_log,
         )
+        self._last_power_frame = self._hass.loop.time()
         self._attr_native_value = message.active_power
         self.async_schedule_update_ha_state()
 
-    async def start_sending_instant_power(self, duration):
-        """Request automatic instant power."""
+    async def start_sending_instant_power(self, duration=POWER_BROADCAST_DURATION):
+        """Request automatic instant power (duration in minutes, max 255)."""
+        self._last_power_request = self._hass.loop.time()
         await self._gateway_handler.send(
             OWNEnergyCommand.start_sending_instant_power(self._where, duration)
         )

@@ -36,7 +36,7 @@ from .gateway import MyHOMEGatewayHandler
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 GATEWAY_TEST_TIMEOUT = 30  # seconds
-PLATFORMS = ["light", "switch", "cover", "climate", "binary_sensor", "sensor", "media_player"]
+PLATFORMS = ["light", "switch", "cover", "climate", "binary_sensor", "sensor", "media_player", "event"]
 
 
 def _default_gateway(hass: HomeAssistant):
@@ -234,7 +234,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     _platforms_to_setup = set(
         hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_PLATFORMS].keys()
-    ) | {"binary_sensor", "sensor"}
+    ) | {"binary_sensor", "sensor", "event"}
     await hass.config_entries.async_forward_entry_setups(
         entry, _platforms_to_setup
     )
@@ -284,7 +284,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     configured_entities.append(f"{entry.data[CONF_MAC]}-gateway-devices")
 
     for entity_entry in entity_entries:
-        if entity_entry.unique_id in configured_entities:
+        # Event entities (CEN / CEN+ / scenarios) are learned from the bus, not configured
+        if entity_entry.unique_id in configured_entities or entity_entry.domain == "event":
             if entity_entry.device_id in devices_to_be_removed:
                 devices_to_be_removed.remove(entity_entry.device_id)
             continue
@@ -521,9 +522,12 @@ async def async_unload_entry(hass, entry):
 
     LOGGER.info("Unloading MyHome entry.")
 
+    # Stop the gateway from creating event entities while platforms unload
+    hass.data[DOMAIN][entry.data[CONF_MAC]].pop("async_add_event_entity", None)
+
     _platforms_to_unload = set(
         hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_PLATFORMS].keys()
-    ) | {"binary_sensor", "sensor"}
+    ) | {"binary_sensor", "sensor", "event"}
     unload_ok = await hass.config_entries.async_unload_platforms(
         entry, _platforms_to_unload
     )

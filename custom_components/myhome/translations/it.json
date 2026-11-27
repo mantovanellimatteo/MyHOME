@@ -95,13 +95,13 @@
       "reauth_successful": "Nuova password accettata"
     },
     "progress": {
-      "scanning_bus": "🔍 Scansione del bus SCS in corso... Ricerca luci, tapparelle e zone clima..."
+      "scanning_bus": "\ud83d\udd0d Scansione del bus SCS in corso... Ricerca luci, tapparelle e zone clima..."
     }
   },
   "options": {
     "progress": {
-      "scanning_bus": "🔍 Scansione del bus SCS in corso... Ricerca luci, tapparelle e zone clima...",
-      "sniffing_bus": "🎧 Ascolto passivo del bus in corso... Premi i tasti fisici sui muri per apprenderli!"
+      "scanning_bus": "\ud83d\udd0d Scansione del bus SCS in corso... Ricerca luci, tapparelle e zone clima...",
+      "sniffing_bus": "\ud83c\udfa7 Ascolto passivo del bus in corso... Premi i tasti fisici sui muri per apprenderli!"
     },
     "step": {
       "menu": {
@@ -210,12 +210,53 @@
   "entity": {
     "binary_sensor": {
       "gateway_connectivity": {
-        "name": "Connettività"
+        "name": "Connettivit\u00e0"
       }
     },
     "sensor": {
       "gateway_devices": {
         "name": "Dispositivi configurati"
+      }
+    },
+    "event": {
+      "cen_button": {
+        "name": "Pulsante {button}",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "short_press": "Pressione breve",
+              "short_release": "Rilascio dopo pressione breve",
+              "long_press": "Pressione lunga",
+              "long_release": "Rilascio dopo pressione lunga"
+            }
+          }
+        }
+      },
+      "cenplus_button": {
+        "name": "Pulsante {button}",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "short_press": "Pressione breve",
+              "long_press": "Pressione lunga",
+              "long_release": "Rilascio dopo pressione lunga",
+              "rotate_cw_slow": "Rotazione oraria (lenta)",
+              "rotate_cw_fast": "Rotazione oraria (veloce)",
+              "rotate_ccw_slow": "Rotazione antioraria (lenta)",
+              "rotate_ccw_fast": "Rotazione antioraria (veloce)"
+            }
+          }
+        }
+      },
+      "scenario_button": {
+        "name": "Scenario {button}",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "pressed": "Avviato"
+            }
+          }
+        }
       }
     }
   }
