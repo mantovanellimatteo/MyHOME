@@ -14,14 +14,14 @@
 ## 🌟 Changelog
 * **v1.6.1**: **Renaming Entities Works Again & Cleaner Names!**
   - **Fix – Renaming Entities**: Changing the entity ID of a MyHOME entity from the UI made it disappear until the next restart (`Error adding entity`), because devices were linked to the gateway with the deprecated `via_device`. They now use `via_device_id`, as required by recent Home Assistant versions; the old way is still used on older versions.
-  - **Fix – Duplicated Sensor Names**: Power and energy sensors no longer repeat the device name (`sensor.load_line_2_load_line_2_power` → `sensor.load_line_2_power`). Existing entity IDs are kept by Home Assistant; only new entities get the short names.
-  - **Fix – False Load Control Warnings**: The gateway echo of the instant power request (`*1200#1*`) is no longer logged as an unhandled load control frame.
+  - **Fix – Duplicated Sensor Names**: Power and energy sensors no longer repeat the device name in their friendly name (e.g. "Total power Total power Power" is now "Total power Power"). Entity IDs of existing sensors are not changed, so automations and dashboards keep working.
+  - **Fix – False Load Control Warnings**: The gateway's reply to the instant power request is no longer logged as an unknown load control message.
   - **Fix – Media Players in YAML**: `media_player` entries in `myhome.yaml` were rejected by the configuration schema; `who` defaults to `16`.
   - **Modern Home Assistant Compatibility**: Removed the deprecated `CONNECTION_CLASS` from the config flow and the deprecated device registry lookups.
 * **v1.6.0**: **WHO 16 Speakers Learned from the Bus & Load Control Lines Power!**
   - **WHO 16 Sound System Speakers**: Amplifiers are now created automatically as `media_player` entities the first time they appear on the bus (e.g. when pressed from a wall control), even if no media player is configured: the platform was previously not loaded at all in that case. ON/OFF now use the WHO 16 amplifier frames `*16*3*WHERE##` / `*16*13*WHERE##` (previously `*16*1*` / `*16*0*`), and state is matched on the exact address (zone 1 no longer reacts to zone 11). Source frames (`*16*3*10S##`) no longer create bogus speakers.
-  - **Load Control Lines**: Each load control actuator (WHO 18, `7N#0`) gets its own power sensor (`Load line N`). Actuators 1–12 are probed at startup and the ones that answer are created automatically, and kept across restarts; they also use the self-healing instant power broadcast. Lines can still be configured in `myhome.yaml` as `sensor` with `where: '7N'` and `class: power`.
-  - **Load Control State Frames**: Frames from the actuators other than power/energy (e.g. a line disconnected by the load control central) are now logged as `[LOAD CONTROL] Unhandled frame ...` warnings, so they can be mapped to line states.
+  - **Load Control Lines**: If your system has BTicino load control (energy management), each actuator that measures and can disconnect a line now gets its own power sensor, so you can see how much each controlled line draws, not only the whole house. Actuators are found automatically at startup (addresses `71#0` to `712#0`) and kept across restarts. See [Load Control Lines](#-load-control-lines-new-in-v160).
+  - **Load Control State Messages (preview)**: Messages from the actuators that are not power readings (e.g. a line disconnected because the house is drawing too much) are logged as `[LOAD CONTROL] Unhandled frame ...` warnings. They are not turned into entities yet: sharing them in an issue helps add support for the line state.
   - **Fix – CEN Event Entities**: CEN pushbutton event entities (v1.5.0) never received presses because of wrong event names; they now fire `short_press` / `short_release` / `long_press` / `long_release`.
   - **Fix – Import YAML**: The "Import YAML" step of the onboarding and options flows failed with `NameError: CONF_PLATFORMS`.
   - **Fix – Auto-learned Devices Saved**: Devices learned from the bus are now really persisted in the integration options (the options dictionary was modified in place, so Home Assistant saw no change).
@@ -142,7 +142,13 @@ WHO 16 amplifiers (address "room + point", e.g. `11`) are created as `media_play
 Includes active and passive discovery of sound diffusion zones on your SCS bus, automatically registering them as `media_player` entities in Home Assistant. This allows you to turn fonic points, audio sources, and speaker zones ON and OFF directly from your dashboards and automations.
 
 ### ⚡ Load Control Lines (New in v1.6.0)
-Every load control actuator (WHO 18, address `7N#0`) gets a `Load line N` power sensor, so besides the total house consumption you can see what each controlled line draws. Actuators 1–12 are probed at startup and created automatically when they answer. Frames about the line state are logged as `[LOAD CONTROL]` warnings, to be decoded in a future version.
+With BTicino load control (energy management), a central unit switches off some lines when the house draws more power than the contract allows, using one actuator per controlled line (e.g. oven, washing machine). Those actuators also measure the power of their line.
+
+The integration creates a power sensor for each actuator, named `Load line N` where `N` is the actuator number (OpenWebNet WHO 18, address `7N#0`): for example `Load line 2` for actuator `72#0`. Nothing needs to be configured: at startup actuators 1 to 12 are queried and a sensor is created for each one that answers. You can rename the sensors from Home Assistant.
+
+If you prefer YAML, add them in `myhome.yaml` as a `sensor` with `where: '7N'` and `class: power`.
+
+The line state (connected or disconnected by the central unit) is not available yet: those messages are logged as `[LOAD CONTROL]` warnings.
 
 ### 🔌 Robust Connection Recovery
 The connection listener and command sessions are now wrapped in resilient supervisors with **exponential backoff reconnection**. If the gateway drops the connection due to network issues or session limits, the integration automatically reconnects without requiring a Home Assistant reboot or manual integration reload.
