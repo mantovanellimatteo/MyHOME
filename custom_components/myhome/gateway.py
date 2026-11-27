@@ -280,7 +280,10 @@ class MyHOMEGatewayHandler:
         if self.generate_events:
             if isinstance(message, OWNMessage):
                 _event_content = {"gateway": str(self.gateway.host)}
-                _event_content.update(message.event_content)
+                try:
+                    _event_content.update(message.event_content)
+                except AttributeError as ex:
+                    LOGGER.debug("%s Could not build event_content for `%s`: %s", self.log_id, message, ex)
                 self.hass.bus.async_fire("myhome_message_event", _event_content)
             else:
                 self.hass.bus.async_fire("myhome_message_event", {"gateway": str(self.gateway.host), "message": str(message)})
